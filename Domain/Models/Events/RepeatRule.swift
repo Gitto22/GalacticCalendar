@@ -181,13 +181,15 @@ extension RepeatRule {
             customPayload: customConfiguration?.payload
         )
 
-        guard let data = try? JSONEncoder().encode(envelope),
-              let json = String(data: data, encoding: .utf8)
-        else {
+        do {
+            let data = try JSONEncoder().encode(envelope)
+            if let json = String(data: data, encoding: .utf8) {
+                return json
+            }
+            return frequency.rawValue
+        } catch {
             return frequency.rawValue
         }
-
-        return json
     }
 
     /// Decodes a rule from the SwiftData / CloudKit string column.
@@ -205,10 +207,18 @@ extension RepeatRule {
             return RepeatRule(frequency: frequency)
         }
 
-        guard let data = trimmed.data(using: .utf8),
-              let envelope = try? JSONDecoder().decode(PersistenceEnvelope.self, from: data),
-              let frequency = RepeatFrequency(rawValue: envelope.frequency)
-        else {
+        guard let data = trimmed.data(using: .utf8) else {
+            return .none
+        }
+
+        let envelope: PersistenceEnvelope
+        do {
+            envelope = try JSONDecoder().decode(PersistenceEnvelope.self, from: data)
+        } catch {
+            return .none
+        }
+
+        guard let frequency = RepeatFrequency(rawValue: envelope.frequency) else {
             return .none
         }
 

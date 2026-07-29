@@ -43,9 +43,13 @@ struct RootView: View {
                     Color.clear
                         .task {
                             let factory = ViewModelFactory(container: container)
-                            homeViewModel = factory.makeHomeViewModel()
+                            let home = factory.makeHomeViewModel()
+                            if let launchError = container.persistenceLaunchError {
+                                home.consumeLaunchError(launchError)
+                            }
+                            homeViewModel = home
                             calendarGridViewModel = factory.makeCalendarGridViewModel()
-                            await container.eventPersistenceService.bootstrap()
+                            await home.bootstrapCatalog()
                         }
                 }
             }

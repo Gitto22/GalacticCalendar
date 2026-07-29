@@ -17,11 +17,6 @@ import SwiftUI
 /// 0 → create editor, 1 → edit editor, 2+ → day events list.
 struct HomeView: View {
 
-    // MARK: - Environment
-
-    /// Reactive event catalog bootstrapped on appearance.
-    @Environment(EventPersistenceService.self) private var eventPersistenceService
-
     // MARK: - Properties
 
     /// ViewModel for Home interactions and modal presentation.
@@ -69,7 +64,7 @@ struct HomeView: View {
         }
         .accessibilityElement(children: .contain)
         .task {
-            await eventPersistenceService.bootstrap()
+            await viewModel.bootstrapCatalog()
         }
         .fullScreenCover(
             isPresented: $viewModel.isPresentingDayEvents,

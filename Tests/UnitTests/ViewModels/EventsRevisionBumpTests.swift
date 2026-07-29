@@ -22,16 +22,17 @@ final class EventsRevisionBumpTests: XCTestCase {
 
     // MARK: - Tests
 
-    func testBootstrapLoadsCatalog() async {
+    func testBootstrapLoadsCatalog() async throws {
         let event = sampleEvent()
         let service = makeService(seed: [event])
-        await service.bootstrap()
+        try await service.bootstrap()
         XCTAssertEqual(service.events.map(\.id), [event.id])
+        XCTAssertNil(service.lastError)
     }
 
     func testCreateUpdatesCatalogAndRevision() async throws {
         let service = makeService()
-        await service.bootstrap()
+        try await service.bootstrap()
         let before = service.eventsRevision
 
         try await service.create(sampleEvent())
@@ -42,7 +43,7 @@ final class EventsRevisionBumpTests: XCTestCase {
     func testDeleteRemovesFromCatalog() async throws {
         let event = sampleEvent()
         let service = makeService(seed: [event])
-        await service.bootstrap()
+        try await service.bootstrap()
 
         try await service.delete(event)
         XCTAssertTrue(service.events.isEmpty)
@@ -54,10 +55,55 @@ final class EventsRevisionBumpTests: XCTestCase {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
 
         let service = makeService()
-        await service.bootstrap()
+        try await service.bootstrap()
         try await service.create(Event(title: "Today", date: today, color: .green))
         try await service.create(Event(title: "Tomorrow", date: tomorrow, color: .red))
 
         XCTAssertEqual(service.events(on: today).map(\.title), ["Today"])
     }
+
+    func testRefreshFailureSurfacesCatalogLoadError() async {
+        let service = EventPersistenceService(
+            repository: FailingFetchEventRepository()
+        )
+
+        do {
+            try await service.bootstrap()
+            XCTFail("Expected catalogLoadFailed")
+        } catch EventPersistenceError.catalogLoadFailed {
+            XCTAssertEqual(service.lastError, .catalogLoadFailed)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
+    }
+}
+
+// MARK: - Failing Fetch Repository
+
+@MainActor
+private final class FailingFetchEventRepository: EventRepositoryProtocol {
+
+    func create(_ event: Event) async throws {}
+
+    func fetchAll() async throws -> [Event] {
+        throw EventRepositoryError.saveFailed
+    }
+
+    func fetch(by id: UUID) async throws -> Event? { nil }
+
+    func fetch(on date: Date) async throws -> [Event] { [] }
+
+    func fetch(in interval: DateInterval) async throws -> [Event] { [] }
+
+    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
+
+    func fetchRecurring() async throws -> [Event] { [] }
+
+    func update(_ event: Event) async throws {}
+
+    func delete(_ event: Event) async throws {}
+
+    func delete(id: UUID) async throws {}
+
+    func duplicate(_ event: Event) async throws -> Event { event.duplicated() }
 }

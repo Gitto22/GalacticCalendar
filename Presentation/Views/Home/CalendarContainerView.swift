@@ -35,7 +35,11 @@ struct CalendarContainerView: View {
         )
         .padding(.horizontal, Spacing.pageHorizontal)
         .task {
-            await eventPersistenceService.bootstrap()
+            do {
+                try await eventPersistenceService.bootstrap()
+            } catch {
+                // Failure recorded on EventPersistenceService.lastError.
+            }
         }
     }
 }

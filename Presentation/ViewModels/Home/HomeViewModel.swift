@@ -35,12 +35,35 @@ final class HomeViewModel {
     /// ViewModel driving the Home-presented event editor, if any.
     private(set) var eventEditorViewModel: EventEditorViewModel?
 
+    /// Last catalog bootstrap / persistence failure mapped for presentation.
+    private(set) var lastError: EventPersistenceError?
+
     // MARK: - Lifecycle
 
     /// Creates the Home presentation model.
     /// - Parameter eventPersistenceService: Service injected from the Composition Root.
     init(eventPersistenceService: EventPersistenceService) {
         self.eventPersistenceService = eventPersistenceService
+    }
+
+    // MARK: - Catalog
+
+    /// Loads the reactive event catalog and records failures on ``lastError``.
+    func bootstrapCatalog() async {
+        do {
+            try await eventPersistenceService.bootstrap()
+            lastError = nil
+        } catch let error as EventPersistenceError {
+            lastError = error
+        } catch {
+            lastError = .catalogLoadFailed
+        }
+    }
+
+    /// Records a Composition Root persistence launch failure on ``lastError``.
+    /// - Parameter error: Launch error from ``DependencyContainer/persistenceLaunchError``.
+    func consumeLaunchError(_ error: EventPersistenceError) {
+        lastError = error
     }
 
     // MARK: - Intents

@@ -197,9 +197,20 @@ final class EventEditorViewModel {
     // MARK: - Notifications
 
     /// Requests local-notification permission when still undetermined.
+    ///
+    /// Authorization request failures are stored on ``lastError``.
+    /// - Returns: `true` when notifications may be delivered.
     @discardableResult
     func requestNotificationAuthorizationIfNeeded() async -> Bool {
-        await persistenceService.requestNotificationAuthorizationIfNeeded()
+        do {
+            return try await persistenceService.requestNotificationAuthorizationIfNeeded()
+        } catch let error as EventPersistenceError {
+            lastError = error
+            return false
+        } catch {
+            lastError = .unknown
+            return false
+        }
     }
 
     // MARK: - Validation

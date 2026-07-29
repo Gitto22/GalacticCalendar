@@ -28,32 +28,46 @@ final class NotificationServiceTests: XCTestCase {
 
     // MARK: - Authorization
 
-    func testRequestAuthorizationWhenNotDeterminedPromptsAndReturnsGrant() async {
+    func testRequestAuthorizationWhenNotDeterminedPromptsAndReturnsGrant() async throws {
         repository.status = .notDetermined
         repository.authorizationGrant = true
 
-        let allowed = await service.requestAuthorizationIfNeeded()
+        let allowed = try await service.requestAuthorizationIfNeeded()
 
         XCTAssertTrue(allowed)
         XCTAssertEqual(repository.requestAuthorizationCallCount, 1)
     }
 
-    func testRequestAuthorizationWhenAuthorizedDoesNotPrompt() async {
+    func testRequestAuthorizationWhenAuthorizedDoesNotPrompt() async throws {
         repository.status = .authorized
 
-        let allowed = await service.requestAuthorizationIfNeeded()
+        let allowed = try await service.requestAuthorizationIfNeeded()
 
         XCTAssertTrue(allowed)
         XCTAssertEqual(repository.requestAuthorizationCallCount, 0)
     }
 
-    func testRequestAuthorizationWhenDeniedReturnsFalse() async {
+    func testRequestAuthorizationWhenDeniedReturnsFalse() async throws {
         repository.status = .denied
 
-        let allowed = await service.requestAuthorizationIfNeeded()
+        let allowed = try await service.requestAuthorizationIfNeeded()
 
         XCTAssertFalse(allowed)
         XCTAssertEqual(repository.requestAuthorizationCallCount, 0)
+    }
+
+    func testRequestAuthorizationPropagatesRepositoryFailure() async {
+        repository.status = .notDetermined
+        repository.requestAuthorizationError = NotificationRepositoryError.schedulingFailed
+
+        do {
+            _ = try await service.requestAuthorizationIfNeeded()
+            XCTFail("Expected authorization request to throw")
+        } catch NotificationRepositoryError.schedulingFailed {
+            XCTAssertEqual(repository.requestAuthorizationCallCount, 1)
+        } catch {
+            XCTFail("Unexpected error: \(error)")
+        }
     }
 
     // MARK: - Synchronize
@@ -200,6 +214,7 @@ private final class MockNotificationRepository: NotificationRepositoryProtocol {
 
     var status: NotificationAuthorizationStatus = .authorized
     var authorizationGrant: Bool = true
+    var requestAuthorizationError: Error?
     var requestAuthorizationCallCount: Int = 0
     var scheduledRequests: [NotificationScheduleRequest] = []
     var cancelledIdentifiers: [String] = []
@@ -210,6 +225,9 @@ private final class MockNotificationRepository: NotificationRepositoryProtocol {
 
     func requestAuthorization() async throws -> Bool {
         requestAuthorizationCallCount += 1
+        if let requestAuthorizationError {
+            throw requestAuthorizationError
+        }
         status = authorizationGrant ? .authorized : .denied
         return authorizationGrant
     }

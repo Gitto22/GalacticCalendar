@@ -102,7 +102,7 @@ final class EventEditorViewModelTests: XCTestCase {
             color: .green
         )
         let persistence = makePersistence(seed: [event])
-        await persistence.bootstrap()
+        try await persistence.bootstrap()
 
         let viewModel = EventEditorViewModel(
             persistenceService: persistence,
@@ -124,7 +124,7 @@ final class EventEditorViewModelTests: XCTestCase {
             color: .green
         )
         let persistence = makePersistence(seed: [event])
-        await persistence.bootstrap()
+        try await persistence.bootstrap()
 
         let viewModel = EventEditorViewModel(
             persistenceService: persistence,

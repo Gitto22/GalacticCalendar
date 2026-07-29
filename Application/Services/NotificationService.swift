@@ -54,8 +54,9 @@ final class NotificationService {
 
     /// Requests notification permission when status is still undetermined.
     /// - Returns: `true` when notifications may be delivered.
+    /// - Throws: When the underlying authorization request fails.
     @discardableResult
-    func requestAuthorizationIfNeeded() async -> Bool {
+    func requestAuthorizationIfNeeded() async throws -> Bool {
         let status = await repository.authorizationStatus()
         switch status {
         case .authorized, .limited:
@@ -63,11 +64,7 @@ final class NotificationService {
         case .denied:
             return false
         case .notDetermined:
-            do {
-                return try await repository.requestAuthorization()
-            } catch {
-                return false
-            }
+            return try await repository.requestAuthorization()
         }
     }
 

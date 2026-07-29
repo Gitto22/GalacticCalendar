@@ -28,6 +28,12 @@ enum EventPersistenceError: Error, Equatable, Sendable {
     /// Reminder fire date was rejected as not in the future.
     case reminderFireDateInPast
 
+    /// Catalog could not be loaded from the repository.
+    case catalogLoadFailed
+
+    /// Persistent store could not be opened (app may be using an in-memory fallback).
+    case storeUnavailable
+
     /// Unexpected persistence failure.
     case unknown
 }
@@ -72,6 +78,9 @@ final class EventPersistenceService {
     /// Monotonic token mirrored from ``EventCatalogService``.
     private(set) var eventsRevision: Int = 0
 
+    /// Last catalog load / refresh failure, if any.
+    private(set) var lastError: EventPersistenceError?
+
     // MARK: - Lifecycle
 
     /// Creates a persistence service.
@@ -97,12 +106,13 @@ final class EventPersistenceService {
 
     /// Requests local-notification permission when still undetermined.
     /// - Returns: `true` when notifications may be delivered.
+    /// - Throws: When the system authorization request fails.
     @discardableResult
-    func requestNotificationAuthorizationIfNeeded() async -> Bool {
+    func requestNotificationAuthorizationIfNeeded() async throws -> Bool {
         guard let notificationService else {
             return false
         }
-        return await notificationService.requestAuthorizationIfNeeded()
+        return try await notificationService.requestAuthorizationIfNeeded()
     }
 
     // MARK: - Bootstrap
@@ -110,20 +120,24 @@ final class EventPersistenceService {
     /// Loads the catalog from the underlying repository.
     ///
     /// Call once at app start (Composition Root / root scene) so observers have data.
-    func bootstrap() async {
-        await refresh()
+    /// - Throws: ``EventPersistenceError`` when the catalog cannot be loaded.
+    func bootstrap() async throws {
+        try await refresh()
     }
 
     /// Reloads the catalog from the repository and publishes to observers.
     ///
-    /// Load failures keep the last known catalog; mutating APIs surface errors.
-    func refresh() async {
+    /// On failure, keeps the last known catalog and records ``lastError``.
+    /// - Throws: ``EventPersistenceError/catalogLoadFailed`` or a mapped repository error.
+    func refresh() async throws {
         do {
             let fetched = try await repository.fetchAll()
             catalog.replaceAll(with: fetched)
             publishCatalog()
+            lastError = nil
         } catch {
-            // Keep the last known catalog; surface errors on the next mutating call.
+            lastError = .catalogLoadFailed
+            throw EventPersistenceError.catalogLoadFailed
         }
     }
 
@@ -162,9 +176,13 @@ final class EventPersistenceService {
         }
         do {
             try await synchronizeReminder(for: event)
-            await refresh()
+            try await refresh()
         } catch {
-            await refresh()
+            do {
+                try await refresh()
+            } catch {
+                // Prefer the original mutation/reminder error; catalog error remains in lastError.
+            }
             throw mapError(error)
         }
     }
@@ -182,9 +200,13 @@ final class EventPersistenceService {
         }
         do {
             try await synchronizeReminder(for: event)
-            await refresh()
+            try await refresh()
         } catch {
-            await refresh()
+            do {
+                try await refresh()
+            } catch {
+                // Prefer the original mutation/reminder error; catalog error remains in lastError.
+            }
             throw mapError(error)
         }
     }
@@ -201,9 +223,13 @@ final class EventPersistenceService {
         }
         do {
             try await cancelReminder(for: event.id)
-            await refresh()
+            try await refresh()
         } catch {
-            await refresh()
+            do {
+                try await refresh()
+            } catch {
+                // Prefer the original mutation/reminder error; catalog error remains in lastError.
+            }
             throw mapError(error)
         }
     }
@@ -218,9 +244,13 @@ final class EventPersistenceService {
         }
         do {
             try await cancelReminder(for: id)
-            await refresh()
+            try await refresh()
         } catch {
-            await refresh()
+            do {
+                try await refresh()
+            } catch {
+                // Prefer the original mutation/reminder error; catalog error remains in lastError.
+            }
             throw mapError(error)
         }
     }

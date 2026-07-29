@@ -96,7 +96,13 @@ struct CalendarGridView: View {
     }
     .environment(ThemeManager())
     .environment(persistence)
-    .task { await persistence.bootstrap() }
+    .task {
+        do {
+            try await persistence.bootstrap()
+        } catch {
+            // Failure recorded on EventPersistenceService.lastError.
+        }
+    }
 }
 
 @MainActor

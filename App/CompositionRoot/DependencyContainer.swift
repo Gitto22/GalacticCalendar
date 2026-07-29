@@ -37,6 +37,11 @@ final class DependencyContainer {
     /// Event persistence entry point for ViewModels.
     let eventPersistenceService: EventPersistenceService
 
+    /// Non-`nil` when the disk store failed and the app fell back to in-memory.
+    ///
+    /// ViewModels / root UI should surface this so the user knows data is ephemeral.
+    private(set) var persistenceLaunchError: EventPersistenceError?
+
     // MARK: - Notifications
 
     /// Local reminder scheduling service (also injected into ``eventPersistenceService``).
@@ -68,7 +73,7 @@ final class DependencyContainer {
                 enableCloudKit: configuration.isEnabled(.cloudKitSync)
             )
             self.modelContainer = container
-
+            self.persistenceLaunchError = nil
             let repository = EventRepository(modelContext: container.mainContext)
             self.eventPersistenceService = EventPersistenceService(
                 repository: repository,
@@ -76,15 +81,25 @@ final class DependencyContainer {
                 notificationService: notificationService
             )
         } catch {
-            // Fallback to in-memory store so the app can still launch if disk setup fails.
-            let fallback = try! ModelContainerFactory.make(inMemory: true, enableCloudKit: false)
-            self.modelContainer = fallback
-            let repository = EventRepository(modelContext: fallback.mainContext)
-            self.eventPersistenceService = EventPersistenceService(
-                repository: repository,
-                catalog: catalog,
-                notificationService: notificationService
-            )
+            do {
+                let fallback = try ModelContainerFactory.make(
+                    inMemory: true,
+                    enableCloudKit: false
+                )
+                self.modelContainer = fallback
+                self.persistenceLaunchError = .storeUnavailable
+                let repository = EventRepository(modelContext: fallback.mainContext)
+                self.eventPersistenceService = EventPersistenceService(
+                    repository: repository,
+                    catalog: catalog,
+                    notificationService: notificationService
+                )
+            } catch {
+                // In-memory SwiftData creation failed — the process cannot continue safely.
+                preconditionFailure(
+                    "Galactic Calendar could not create a ModelContainer (disk and in-memory failed): \(error)"
+                )
+            }
         }
     }
 }
