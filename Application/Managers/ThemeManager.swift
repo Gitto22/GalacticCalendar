@@ -1,4 +1,4 @@
-﻿//
+//
 //  ThemeManager.swift
 //  GalacticCalendar
 //
@@ -6,10 +6,10 @@
 import Foundation
 import SwiftUI
 
-/// Manages appearance preferences for the approved visual identity.
+/// Application-level manager for appearance preferences.
 ///
-/// Does not introduce new themes. Additional themes remain gated behind
-/// ``FeatureFlag/additionalThemes`` until explicitly implemented.
+/// Preserves the approved visual identity. Additional themes remain
+/// gated and unimplemented.
 @MainActor
 @Observable
 final class ThemeManager {
@@ -34,6 +34,7 @@ final class ThemeManager {
     ) {
         self.preferredColorScheme = preferredColorScheme
         self.allowsAdditionalThemes = allowsAdditionalThemes
+        // TODO: Load persisted appearance preference when settings storage is introduced.
     }
 
     // MARK: - Appearance
@@ -41,16 +42,19 @@ final class ThemeManager {
     /// Resets appearance to the system color scheme.
     func useSystemAppearance() {
         preferredColorScheme = nil
+        // TODO: Persist the system preference when settings storage is introduced.
     }
 
     /// Applies a light appearance preference.
     func useLightAppearance() {
         preferredColorScheme = .light
+        // TODO: Persist the light preference when settings storage is introduced.
     }
 
     /// Applies a dark appearance preference.
     func useDarkAppearance() {
         preferredColorScheme = .dark
+        // TODO: Persist the dark preference when settings storage is introduced.
     }
 
     // MARK: - Future Themes
@@ -59,4 +63,7 @@ final class ThemeManager {
     var canUseAdditionalThemes: Bool {
         allowsAdditionalThemes
     }
+
+    // TODO: Coordinate month background selection with Assets/Months when Home binds the visible month.
+    // TODO: Introduce additional theme catalogs only when FeatureFlag.additionalThemes is enabled.
 }
