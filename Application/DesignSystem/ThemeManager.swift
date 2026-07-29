@@ -142,9 +142,14 @@ final class ThemeManager {
 
     // MARK: - Month Detection
 
+    /// Returns the device's current calendar month number (`1...12`).
+    func currentMonth() -> Int {
+        Calendar.current.component(.month, from: Date())
+    }
+
     /// Current calendar month number in the range `1...12`.
     var currentMonthNumber: Int {
-        calendar.component(.month, from: Date())
+        currentMonth()
     }
 
     /// Month number currently driving the Home background.
@@ -154,7 +159,7 @@ final class ThemeManager {
             return displayedMonthOverride
         }
 
-        return currentMonthNumber
+        return currentMonth()
     }
 
     /// Active monthly background asset.
@@ -164,29 +169,48 @@ final class ThemeManager {
 
     // MARK: - Backgrounds
 
+    /// Returns the imageset name for the provided month number.
+    /// - Parameter month: Month number in `1...12`.
+    /// - Returns: Asset name such as `July`.
+    func backgroundAssetName(for month: Int) -> String {
+        MonthBackgroundAsset.asset(for: month)?.imageName
+            ?? MonthBackgroundAsset.january.imageName
+    }
+
+    /// Returns the imageset name for the device's current month.
+    /// - Returns: Asset name under `Assets/Months`.
+    func currentBackgroundAsset() -> String {
+        backgroundAssetName(for: currentMonth())
+    }
+
     /// Asset name for the active month background.
     var activeMonthBackgroundName: String {
-        activeMonthBackground.imageName
+        backgroundAssetName(for: activeMonthNumber)
+    }
+
+    /// Returns the asset name for the device's current calendar month.
+    /// - Returns: Imageset name such as `July`.
+    func currentMonthBackgroundName() -> String {
+        currentBackgroundAsset()
     }
 
     /// Returns the asset name for a specific month number.
     /// - Parameter monthNumber: Month number in `1...12`.
     /// - Returns: Imageset name under `Assets/Months`.
     func monthBackgroundName(for monthNumber: Int) -> String {
-        MonthBackgroundAsset.asset(for: monthNumber)?.imageName
-            ?? MonthBackgroundAsset.january.imageName
+        backgroundAssetName(for: monthNumber)
     }
 
     /// Returns the SwiftUI image for a specific month number.
     /// - Parameter monthNumber: Month number in `1...12`.
     /// - Returns: Image referencing `Assets/Months`.
     func monthBackgroundImage(for monthNumber: Int) -> Image {
-        Image(monthBackgroundName(for: monthNumber))
+        Image(backgroundAssetName(for: monthNumber))
     }
 
     /// SwiftUI image for the active month background.
     var activeMonthBackgroundImage: Image {
-        monthBackgroundImage(for: activeMonthNumber)
+        Image(activeMonthBackgroundName)
     }
 
     // MARK: - Appearance

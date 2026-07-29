@@ -51,5 +51,6 @@ struct HomeView: View {
 #if DEBUG
 #Preview("Home") {
     HomeView()
+        .environment(ThemeManager())
 }
 #endif

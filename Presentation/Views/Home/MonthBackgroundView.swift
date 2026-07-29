@@ -5,21 +5,38 @@
 
 import SwiftUI
 
-/// Draws the monthly space background behind the Home interface.
+/// Full-screen monthly background loaded from `Assets/Months`.
 ///
-/// Backgrounds are loaded exclusively from `Assets/Months`.
-/// Do not redesign or generate replacement artwork.
+/// Resolves the current month through ``ThemeManager`` and displays
+/// the matching approved asset. Does not generate artwork, gradients,
+/// or drawn backgrounds.
 struct MonthBackgroundView: View {
+
+    // MARK: - Environment
+
+    /// Theme authority that maps months to asset names.
+    @Environment(ThemeManager.self) private var themeManager
 
     // MARK: - Body
 
     var body: some View {
-        // TODO: Resolve the asset name for the currently displayed month.
-        // TODO: Load the corresponding imageset from Assets/Months.
-        // TODO: Draw the background full-bleed beneath the Home interface.
-        Color.clear
-            .ignoresSafeArea()
-            .accessibilityHidden(true)
+        GeometryReader { geometry in
+            Image(resolvedAssetName)
+                .resizable()
+                .scaledToFill()
+                .frame(width: geometry.size.width, height: geometry.size.height)
+                .clipped()
+        }
+        .ignoresSafeArea()
+        .accessibilityHidden(true)
+    }
+
+    // MARK: - Asset Resolution
+
+    /// Asset name for the device's current month.
+    private var resolvedAssetName: String {
+        let month = themeManager.currentMonth()
+        return themeManager.backgroundAssetName(for: month)
     }
 }
 
@@ -28,5 +45,6 @@ struct MonthBackgroundView: View {
 #if DEBUG
 #Preview("Month Background") {
     MonthBackgroundView()
+        .environment(ThemeManager())
 }
 #endif
