@@ -159,8 +159,17 @@ struct CalendarEngine: CalendarGenerating, Sendable {
                 return nil
             }
 
-            let isCurrentMonth = calendar.component(.month, from: dayDate) == visibleMonth
-            return makeDay(from: dayDate, isCurrentMonth: isCurrentMonth)
+            let dayMonth = calendar.component(.month, from: dayDate)
+            let membership: CalendarDayMembership
+            if dayMonth == visibleMonth {
+                membership = .currentMonth
+            } else if dayDate < startOfDay {
+                membership = .previousMonth
+            } else {
+                membership = .nextMonth
+            }
+
+            return makeDay(from: dayDate, membership: membership)
         }
     }
 
@@ -180,7 +189,7 @@ struct CalendarEngine: CalendarGenerating, Sendable {
                 return nil
             }
 
-            return makeDay(from: dayDate, isCurrentMonth: false)
+            return makeDay(from: dayDate, membership: .previousMonth)
         }
     }
 
@@ -196,7 +205,7 @@ struct CalendarEngine: CalendarGenerating, Sendable {
                 return nil
             }
 
-            return makeDay(from: dayDate, isCurrentMonth: true)
+            return makeDay(from: dayDate, membership: .currentMonth)
         }
     }
 
@@ -214,22 +223,22 @@ struct CalendarEngine: CalendarGenerating, Sendable {
                 return nil
             }
 
-            return makeDay(from: dayDate, isCurrentMonth: false)
+            return makeDay(from: dayDate, membership: .nextMonth)
         }
     }
 
     // MARK: - Day Factory
 
     /// Creates a ``CalendarDay`` from an absolute date.
-    private func makeDay(from dayDate: Date, isCurrentMonth: Bool) -> CalendarDay {
+    private func makeDay(from dayDate: Date, membership: CalendarDayMembership) -> CalendarDay {
         let startOfDay = calendar.startOfDay(for: dayDate)
         let dayNumber = calendar.component(.day, from: startOfDay)
 
         return CalendarDay(
-            id: makeIdentifier(for: startOfDay, isCurrentMonth: isCurrentMonth),
+            id: makeIdentifier(for: startOfDay, membership: membership),
             date: startOfDay,
             dayNumber: dayNumber,
-            isCurrentMonth: isCurrentMonth,
+            membership: membership,
             isToday: calendar.isDate(startOfDay, inSameDayAs: today),
             isSelected: false,
             hasEvents: false,
@@ -240,12 +249,11 @@ struct CalendarEngine: CalendarGenerating, Sendable {
     // MARK: - Helpers
 
     /// Builds a stable identifier for a grid day.
-    private func makeIdentifier(for date: Date, isCurrentMonth: Bool) -> String {
+    private func makeIdentifier(for date: Date, membership: CalendarDayMembership) -> String {
         let year = calendar.component(.year, from: date)
         let month = calendar.component(.month, from: date)
         let day = calendar.component(.day, from: date)
-        let membership = isCurrentMonth ? "in" : "out"
-        return "\(year)-\(month)-\(day)-\(membership)"
+        return "\(year)-\(month)-\(day)-\(membership.rawValue)"
     }
 
     /// Creates a date from year/month/day components.

@@ -5,20 +5,17 @@
 
 import SwiftUI
 
-/// Container that hosts the approved Home calendar surface.
+/// Thin host for ``CalendarGridView`` when a container wrapper is needed.
 ///
-/// Displays the current month produced by ``CalendarEngine``.
+/// ``HomeView`` embeds ``CalendarGridView`` directly.
 struct CalendarContainerView: View {
 
     // MARK: - Properties
 
-    /// Engine that generates the monthly day structure.
     private let engine: CalendarEngine
 
     // MARK: - Lifecycle
 
-    /// Creates the calendar container.
-    /// - Parameter engine: Calendar structure generator.
     init(engine: CalendarEngine = CalendarEngine()) {
         self.engine = engine
     }

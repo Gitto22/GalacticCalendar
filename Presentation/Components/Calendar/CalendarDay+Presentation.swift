@@ -11,15 +11,11 @@ enum CalendarDayPresentationMapper {
     // MARK: - Mapping
 
     /// Maps domain event color tokens to Design System colors.
-    /// - Parameter tokens: Domain event color tokens.
-    /// - Returns: Colors from ``ColorPalette``.
     static func colors(for tokens: [CalendarEventColorToken]) -> [Color] {
         tokens.prefix(CalendarConstants.maxEventIndicators).map(color(for:))
     }
 
     /// Maps a single domain token to a Design System color.
-    /// - Parameter token: Domain event color token.
-    /// - Returns: Matching ``ColorPalette`` color.
     static func color(for token: CalendarEventColorToken) -> Color {
         switch token {
         case .purple:
@@ -33,16 +29,19 @@ enum CalendarDayPresentationMapper {
         }
     }
 
-    /// Builds prepared cell states from a domain day.
+    /// Builds cell states from a domain day.
     ///
-    /// Event and gift states are ignored until those features are connected.
-    /// - Parameter day: Domain calendar day.
-    /// - Returns: Visual states for ``CalendarDayCell``.
+    /// Event indicators are not mapped yet.
     static func states(for day: CalendarDay) -> Set<CalendarDayCellState> {
         var states: Set<CalendarDayCellState> = []
 
-        if day.isCurrentMonth == false {
-            states.insert(.outsideMonth)
+        switch day.membership {
+        case .previousMonth:
+            states.insert(.previousMonth)
+        case .nextMonth:
+            states.insert(.nextMonth)
+        case .currentMonth:
+            break
         }
 
         if day.isToday {

@@ -7,9 +7,8 @@ import SwiftUI
 
 /// Full-screen monthly background loaded from `Assets/Months`.
 ///
-/// Resolves the current month through ``ThemeManager`` and displays
-/// the matching approved asset. Does not generate artwork, gradients,
-/// or drawn backgrounds.
+/// Uses ``ThemeManager`` to resolve the asset for the current month.
+/// Does not generate artwork.
 struct MonthBackgroundView: View {
 
     // MARK: - Environment
@@ -21,7 +20,7 @@ struct MonthBackgroundView: View {
 
     var body: some View {
         GeometryReader { geometry in
-            Image(resolvedAssetName)
+            Image(currentMonthAssetName)
                 .resizable()
                 .scaledToFill()
                 .frame(width: geometry.size.width, height: geometry.size.height)
@@ -33,9 +32,9 @@ struct MonthBackgroundView: View {
 
     // MARK: - Asset Resolution
 
-    /// Asset name for the device's current month.
-    private var resolvedAssetName: String {
-        themeManager.backgroundAssetName(for: themeManager.activeMonthNumber)
+    /// Asset name for the device's current month via ``ThemeManager``.
+    private var currentMonthAssetName: String {
+        themeManager.currentBackgroundAsset()
     }
 }
 

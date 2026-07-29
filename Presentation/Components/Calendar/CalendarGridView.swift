@@ -5,35 +5,32 @@
 
 import SwiftUI
 
-/// Custom monthly calendar grid matching the approved Galactic Calendar design.
+/// Approved monthly calendar grid driven exclusively by ``CalendarEngine``.
 ///
-/// Draws the current month exclusively from ``CalendarEngine``
-/// as a fixed 7×6 (42-cell) grid. No simulated data.
+/// Always renders the current month as a fixed 7×6 (42-cell) grid.
 struct CalendarGridView: View {
 
     // MARK: - Environment
 
-    /// Size class used for responsive spacing.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     // MARK: - Properties
 
-    /// Exactly 42 domain days for the visible month grid.
+    /// Exactly 42 domain days from ``CalendarEngine``.
     private let days: [CalendarDay]
 
-    /// Month number requested from the engine.
+    /// Current month obtained from the engine.
     private let displayedMonth: Int
 
-    /// Year requested from the engine.
+    /// Current year obtained from the engine.
     private let displayedYear: Int
 
-    /// Identifier of the locally selected day, if any.
+    /// Locally selected day identifier.
     @State private var selectedDayID: String?
 
     // MARK: - Lifecycle
 
-    /// Creates a calendar grid for the engine's current month and year.
-    /// - Parameter engine: Calendar structure generator.
+    /// Creates a grid for the engine's current month and year.
     init(engine: CalendarEngine = CalendarEngine()) {
         let month = engine.currentMonth()
         let year = engine.currentYear()
@@ -58,21 +55,14 @@ struct CalendarGridView: View {
             .frame(maxWidth: .infinity)
         }
         .accessibilityElement(children: .contain)
-        .accessibilityLabel(
-            Text("\(displayedMonth)/\(displayedYear)")
-        )
+        .accessibilityLabel(Text("\(displayedMonth)/\(displayedYear)"))
     }
 
     // MARK: - Cells
 
-    /// Builds a tappable day cell with selection support prepared.
-    /// - Parameter day: Domain day from ``CalendarEngine``.
-    /// - Returns: Day cell view.
     @ViewBuilder
     private func dayCell(for day: CalendarDay) -> some View {
-        let presentedDay = applyingSelection(to: day)
-
-        CalendarDayCell(day: presentedDay)
+        CalendarDayCell(day: applyingSelection(to: day))
             .contentShape(Rectangle())
             .onTapGesture {
                 selectDay(day)
@@ -81,19 +71,11 @@ struct CalendarGridView: View {
 
     // MARK: - Selection
 
-    /// Marks a day as selected when it belongs to the current month.
-    /// - Parameter day: Tapped domain day.
     private func selectDay(_ day: CalendarDay) {
-        guard day.isCurrentMonth else {
-            return
-        }
-
+        guard day.isCurrentMonth else { return }
         selectedDayID = day.id
     }
 
-    /// Returns a copy of the day with the local selection flag applied.
-    /// - Parameter day: Source domain day.
-    /// - Returns: Day ready for presentation.
     private func applyingSelection(to day: CalendarDay) -> CalendarDay {
         var presented = day
         presented.isSelected = (day.id == selectedDayID)
@@ -102,13 +84,11 @@ struct CalendarGridView: View {
 
     // MARK: - Grid
 
-    /// Seven equal-width columns → 42 cells produce six rows.
     private static let columns: [GridItem] = Array(
         repeating: GridItem(.flexible(), spacing: Spacing.xxs),
         count: CalendarConstants.columnCount
     )
 
-    /// Responsive spacing between header and rows.
     private var gridSpacing: CGFloat {
         horizontalSizeClass == .regular ? Spacing.xs : Spacing.xxs
     }

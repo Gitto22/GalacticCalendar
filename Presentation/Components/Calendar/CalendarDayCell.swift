@@ -10,7 +10,7 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
 
     // MARK: - Cases
 
-    /// Standard in-month day.
+    /// Standard day inside the displayed month.
     case normal
 
     /// Day matching today.
@@ -19,47 +19,46 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
     /// Explicitly selected day.
     case selected
 
-    /// Day belonging to the previous or next month.
+    /// Day belonging to the previous month.
+    case previousMonth
+
+    /// Day belonging to the next month.
+    case nextMonth
+
+    /// Legacy alias kept for outside-month presentation helpers.
     case outsideMonth
 
-    /// Day prepared to show event indicators (future).
+    /// Reserved for future event indicators.
     case withEvent
 
-    /// Day prepared for a future gift decoration.
+    /// Reserved for future gift decoration.
     case withGift
 
     // MARK: - Identifiable
 
-    /// Stable identifier matching the state name.
     var id: String { rawValue }
 }
 
 /// Single day cell for the approved monthly calendar grid.
 ///
-/// Renders day number with normal / outside-month / today / selected states.
-/// Real events are intentionally not shown yet.
+/// Shows the day number with:
+/// current-month, previous-month, next-month, today, and selected states.
+/// Event indicators are not rendered yet.
 struct CalendarDayCell: View {
 
     // MARK: - Environment
 
-    /// Size class used for responsive cell sizing.
     @Environment(\.horizontalSizeClass) private var horizontalSizeClass
 
     // MARK: - Properties
 
-    /// Day number displayed inside the cell.
     let dayNumber: Int
-
-    /// Whether the day falls on Saturday or Sunday.
     let isWeekend: Bool
-
-    /// Visual states derived from ``CalendarDay``.
     let states: Set<CalendarDayCellState>
 
     // MARK: - Lifecycle
 
     /// Creates a day cell from a domain ``CalendarDay``.
-    /// - Parameter day: Domain day produced by ``CalendarEngine``.
     init(day: CalendarDay) {
         self.dayNumber = day.dayNumber
         self.isWeekend = day.isWeekend()
@@ -67,10 +66,6 @@ struct CalendarDayCell: View {
     }
 
     /// Creates a day cell from explicit presentation values.
-    /// - Parameters:
-    ///   - dayNumber: Day of month to display.
-    ///   - isWeekend: Weekend styling flag.
-    ///   - states: Visual states.
     init(
         dayNumber: Int,
         isWeekend: Bool = false,
@@ -90,7 +85,7 @@ struct CalendarDayCell: View {
                 .fontWeight(.medium)
                 .foregroundStyle(dayNumberColor)
 
-            // Layout slot reserved for future events. Empty for now.
+            // Reserved layout slot. Real events are not shown yet.
             EventIndicatorsView(colors: [])
         }
         .frame(maxWidth: .infinity)
@@ -99,34 +94,33 @@ struct CalendarDayCell: View {
         .background(ColorPalette.dayCellFill, in: cellShape)
         .overlay(cellBorder)
         .currentDayHighlight(isHighlighted)
-        .opacity(isOutsideMonth ? ColorPalette.dayOutsideOpacity : 1)
+        .opacity(isOutsideDisplayedMonth ? ColorPalette.dayOutsideOpacity : 1)
         .accessibilityLabel(Text(dayNumberText))
         .accessibilityAddTraits(accessibilityTraits)
     }
 
     // MARK: - State Helpers
 
-    /// Whether the cell belongs to another month.
-    private var isOutsideMonth: Bool {
-        states.contains(.outsideMonth)
+    /// Previous or next month relative to the displayed month.
+    private var isOutsideDisplayedMonth: Bool {
+        states.contains(.previousMonth)
+            || states.contains(.nextMonth)
+            || states.contains(.outsideMonth)
     }
 
-    /// Whether the cell represents today.
     private var isCurrent: Bool {
         states.contains(.current)
     }
 
-    /// Whether the cell is selected.
     private var isSelected: Bool {
         states.contains(.selected)
     }
 
-    /// Whether the cell uses the approved blue highlight.
+    /// Today and selected days share the approved blue highlight.
     private var isHighlighted: Bool {
         isCurrent || isSelected
     }
 
-    /// Accessibility traits reflecting current/selected states.
     private var accessibilityTraits: AccessibilityTraits {
         var traits: AccessibilityTraits = []
         if isSelected {
@@ -137,12 +131,10 @@ struct CalendarDayCell: View {
 
     // MARK: - Visual Helpers
 
-    /// Rounded shape used by the approved day cell.
     private var cellShape: RoundedRectangle {
         RoundedRectangle(cornerRadius: Spacing.Radius.sm, style: .continuous)
     }
 
-    /// Subtle border for non-highlighted cells.
     @ViewBuilder
     private var cellBorder: some View {
         if isHighlighted == false {
@@ -150,24 +142,20 @@ struct CalendarDayCell: View {
         }
     }
 
-    /// Day number string derived from the cell value.
     private var dayNumberText: String {
         String(dayNumber)
     }
 
-    /// Responsive day number font.
     private var dayNumberFont: Font {
         horizontalSizeClass == .regular ? Typography.body : Typography.callout
     }
 
-    /// Responsive minimum cell height.
     private var dayCellMinHeight: CGFloat {
         horizontalSizeClass == .regular
             ? LayoutConstants.dayCellMinHeightRegular
             : LayoutConstants.dayCellMinHeightCompact
     }
 
-    /// Text color respecting weekend presentation.
     private var dayNumberColor: Color {
         isWeekend ? ColorPalette.weekend : ColorPalette.onImagePrimary
     }

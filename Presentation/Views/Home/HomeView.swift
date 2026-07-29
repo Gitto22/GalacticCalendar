@@ -5,44 +5,56 @@
 
 import SwiftUI
 
-/// Main Home screen container for Galactic Calendar.
+/// Approved Home screen for Galactic Calendar.
 ///
-/// Composes the approved Home layout using child views.
-/// Business logic, calendar behavior, and events remain deferred.
+/// Composes:
+/// 1. ``MonthBackgroundView``
+/// 2. ``HomeHeaderView``
+/// 3. ``UniverseMessageCard``
+/// 4. ``CalendarGridView``
 struct HomeView: View {
 
     // MARK: - Properties
 
-    /// ViewModel driving Home presentation state.
+    /// ViewModel for future Home interactions.
     @State private var viewModel: HomeViewModel
+
+    /// Engine providing real days for the current month.
+    private let calendarEngine: CalendarEngine
 
     // MARK: - Lifecycle
 
     /// Creates the Home screen.
-    /// - Parameter viewModel: Home presentation model.
-    init(viewModel: HomeViewModel = HomeViewModel()) {
+    /// - Parameters:
+    ///   - viewModel: Home presentation model.
+    ///   - calendarEngine: Calendar structure generator.
+    init(
+        viewModel: HomeViewModel = HomeViewModel(),
+        calendarEngine: CalendarEngine = CalendarEngine()
+    ) {
         _viewModel = State(initialValue: viewModel)
+        self.calendarEngine = calendarEngine
     }
 
     // MARK: - Body
 
     var body: some View {
-        ZStack {
-            // TODO: Bind month background to the visible calendar month.
+        ZStack(alignment: .top) {
             MonthBackgroundView()
 
-            VStack(spacing: 0) {
-                // TODO: Connect header actions when Home interactions are defined.
+            VStack(spacing: Spacing.sm) {
                 HomeHeaderView()
 
-                // TODO: Connect Universe Messages when the feature module is enabled.
                 UniverseMessageCard()
+                    .padding(.horizontal, Spacing.pageHorizontal)
 
-                // TODO: Embed the real calendar surface without altering the approved design.
-                CalendarContainerView()
+                CalendarGridView(engine: calendarEngine)
+                    .padding(.horizontal, Spacing.pageHorizontal)
+
+                Spacer(minLength: 0)
             }
         }
-        // TODO: Apply navigation chrome consistent with the approved Home design.
+        .accessibilityElement(children: .contain)
     }
 }
 
