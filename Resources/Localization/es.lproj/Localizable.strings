@@ -11,3 +11,47 @@
 "weekday_fri_short" = "VIE";
 "weekday_sat_short" = "SÁB";
 "weekday_sun_short" = "DOM";
+
+"event_editor_close" = "Cerrar";
+"event_editor_confirm" = "Confirmar";
+"event_title_placeholder" = "Título del evento";
+"event_description_placeholder" = "Descripción del evento...";
+"event_field_reminder" = "Recordatorio";
+"event_field_repeat" = "Repetición";
+"event_field_category" = "Categoría";
+"event_field_priority" = "Prioridad";
+"event_field_status" = "Estado";
+"event_field_color" = "Color del evento";
+"event_save_button" = "Guardar evento";
+
+"event_reminder_none" = "Sin recordatorio";
+"event_reminder_at_time" = "A la hora";
+"event_reminder_15_min" = "15 min antes";
+"event_reminder_30_min" = "30 min antes";
+"event_reminder_1_hour" = "1 hora antes";
+"event_reminder_1_day" = "1 día antes";
+
+"event_repeat_none" = "No repetir";
+"event_repeat_daily" = "Cada día";
+"event_repeat_weekly" = "Cada semana";
+"event_repeat_monthly" = "Cada mes";
+"event_repeat_yearly" = "Cada año";
+
+"event_category_work" = "Trabajo";
+"event_category_personal" = "Personal";
+"event_category_health" = "Salud";
+"event_category_finances" = "Finanzas";
+"event_category_family" = "Familia";
+"event_category_studies" = "Estudios";
+"event_category_travel" = "Viajes";
+"event_category_other" = "Otro";
+
+"event_priority_low" = "Baja";
+"event_priority_medium" = "Media";
+"event_priority_high" = "Alta";
+"event_priority_critical" = "Crítica";
+
+"event_status_pending" = "Pendiente";
+"event_status_in_progress" = "En curso";
+"event_status_completed" = "Completado";
+"event_status_cancelled" = "Cancelado";

@@ -38,6 +38,9 @@ enum LayoutConstants {
     /// Minimum day-cell height on regular width devices.
     static let dayCellMinHeightRegular: CGFloat = Spacing.xxxl
 
-    /// Size for the future gift decoration badge.
-    static let dayGiftBadgeSize: CGFloat = Spacing.sm
+    /// Diameter for selectable event color dots in the editor.
+    static let eventColorDotSize: CGFloat = Spacing.sm
+
+    /// Minimum height for the event description editor.
+    static let eventDescriptionMinHeight: CGFloat = Spacing.xxxl + Spacing.xl
 }

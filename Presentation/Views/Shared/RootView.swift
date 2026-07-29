@@ -12,23 +12,40 @@ struct RootView: View {
 
     // MARK: - Environment
 
+    /// Composition Root providing ViewModel factories and infrastructure.
+    @Environment(DependencyContainer.self) private var container
+
     /// Navigation stack owner injected by the Composition Root.
     @Environment(NavigationManager.self) private var navigationManager
 
     /// Appearance preferences injected by the Composition Root.
     @Environment(ThemeManager.self) private var themeManager
 
+    // MARK: - State
+
+    /// Stable Home ViewModel created once from the Composition Root.
+    @State private var homeViewModel: HomeViewModel?
+
     // MARK: - Body
 
     var body: some View {
         NavigationStack(path: Bindable(navigationManager).path) {
-            HomeView()
-                .navigationDestination(for: Route.self) { route in
-                    destination(for: route)
+            Group {
+                if let homeViewModel {
+                    HomeView(viewModel: homeViewModel)
+                } else {
+                    Color.clear
+                        .task {
+                            homeViewModel = ViewModelFactory(container: container).makeHomeViewModel()
+                        }
                 }
-                #if os(iOS)
-                .toolbar(.hidden, for: .navigationBar)
-                #endif
+            }
+            .navigationDestination(for: Route.self) { route in
+                destination(for: route)
+            }
+            #if os(iOS)
+            .toolbar(.hidden, for: .navigationBar)
+            #endif
         }
         .preferredColorScheme(themeManager.preferredColorScheme)
     }
@@ -40,7 +57,9 @@ struct RootView: View {
     private func destination(for route: Route) -> some View {
         switch route {
         case .root:
-            HomeView()
+            if let homeViewModel {
+                HomeView(viewModel: homeViewModel)
+            }
         }
     }
 }

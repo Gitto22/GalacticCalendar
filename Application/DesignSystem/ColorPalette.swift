@@ -170,6 +170,39 @@ enum ColorPalette {
         eventIndicatorBlue,
         eventIndicatorOrange
     ]
+
+    // MARK: - Event Editor
+
+    /// Green token for ``EventColor/green``.
+    static let eventColorGreen = Color(red: 0.30, green: 0.85, blue: 0.52)
+
+    /// Yellow token for ``EventColor/yellow``.
+    static let eventColorYellow = Color(red: 1.00, green: 0.86, blue: 0.28)
+
+    /// Orange token for ``EventColor/orange``.
+    static let eventColorOrange = Color(red: 1.00, green: 0.62, blue: 0.28)
+
+    /// Red token for ``EventColor/red``.
+    static let eventColorRed = Color(red: 1.00, green: 0.35, blue: 0.40)
+
+    /// Purple accent used by event editor icons and highlights.
+    static let editorAccent = universeAccent
+
+    /// Placeholder text color inside the event editor.
+    static let editorPlaceholder = Color.white.opacity(0.45)
+
+    /// Fill used by editor selector tiles.
+    static let editorTileFill = Color.black.opacity(0.35)
+
+    /// Returns the Design System color for an event color token.
+    static func color(for eventColor: EventColor) -> Color {
+        switch eventColor {
+        case .green: eventColorGreen
+        case .yellow: eventColorYellow
+        case .orange: eventColorOrange
+        case .red: eventColorRed
+        }
+    }
 }
 
 // MARK: - Adaptive Color Support

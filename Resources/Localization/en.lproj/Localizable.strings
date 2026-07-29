@@ -11,3 +11,47 @@
 "weekday_fri_short" = "FRI";
 "weekday_sat_short" = "SAT";
 "weekday_sun_short" = "SUN";
+
+"event_editor_close" = "Close";
+"event_editor_confirm" = "Confirm";
+"event_title_placeholder" = "Event title";
+"event_description_placeholder" = "Event description...";
+"event_field_reminder" = "Reminder";
+"event_field_repeat" = "Repeat";
+"event_field_category" = "Category";
+"event_field_priority" = "Priority";
+"event_field_status" = "Status";
+"event_field_color" = "Event color";
+"event_save_button" = "Save event";
+
+"event_reminder_none" = "No reminder";
+"event_reminder_at_time" = "At event time";
+"event_reminder_15_min" = "15 min before";
+"event_reminder_30_min" = "30 min before";
+"event_reminder_1_hour" = "1 hour before";
+"event_reminder_1_day" = "1 day before";
+
+"event_repeat_none" = "Does not repeat";
+"event_repeat_daily" = "Every day";
+"event_repeat_weekly" = "Every week";
+"event_repeat_monthly" = "Every month";
+"event_repeat_yearly" = "Every year";
+
+"event_category_work" = "Work";
+"event_category_personal" = "Personal";
+"event_category_health" = "Health";
+"event_category_finances" = "Finances";
+"event_category_family" = "Family";
+"event_category_studies" = "Studies";
+"event_category_travel" = "Travel";
+"event_category_other" = "Other";
+
+"event_priority_low" = "Low";
+"event_priority_medium" = "Medium";
+"event_priority_high" = "High";
+"event_priority_critical" = "Critical";
+
+"event_status_pending" = "Pending";
+"event_status_in_progress" = "In progress";
+"event_status_completed" = "Completed";
+"event_status_cancelled" = "Cancelled";

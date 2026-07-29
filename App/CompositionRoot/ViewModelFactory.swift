@@ -5,15 +5,13 @@
 
 import Foundation
 
-/// Factory reserved for constructing Presentation ViewModels.
-///
-/// No feature ViewModels are created until their modules are connected.
+/// Factory for constructing Presentation ViewModels from the Composition Root.
 @MainActor
 final class ViewModelFactory {
 
     // MARK: - Properties
 
-    /// Shared dependency container used by future ViewModel construction.
+    /// Shared dependency container used by ViewModel construction.
     private let container: DependencyContainer
 
     // MARK: - Lifecycle
@@ -22,5 +20,26 @@ final class ViewModelFactory {
     /// - Parameter container: Application dependency container.
     init(container: DependencyContainer) {
         self.container = container
+    }
+
+    // MARK: - Home
+
+    /// Builds a ``HomeViewModel`` wired to event persistence.
+    func makeHomeViewModel() -> HomeViewModel {
+        HomeViewModel(eventPersistenceService: container.eventPersistenceService)
+    }
+
+    // MARK: - Events
+
+    /// Builds an ``EventEditorViewModel`` for creating an event on the given date.
+    /// - Parameter date: Initial event date.
+    /// - Returns: Configured editor ViewModel in create mode.
+    func makeEventEditorViewModel(date: Date = Date()) -> EventEditorViewModel {
+        let viewModel = EventEditorViewModel(
+            persistenceService: container.eventPersistenceService,
+            initialDate: date
+        )
+        viewModel.prepareForCreation(on: date)
+        return viewModel
     }
 }

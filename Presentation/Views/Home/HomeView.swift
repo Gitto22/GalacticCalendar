@@ -12,11 +12,13 @@ import SwiftUI
 /// 2. ``HomeHeaderView``
 /// 3. ``UniverseMessageCard``
 /// 4. ``CalendarGridView``
+///
+/// Presents ``EventEditorView`` when an in-month day is selected.
 struct HomeView: View {
 
     // MARK: - Properties
 
-    /// ViewModel for future Home interactions.
+    /// ViewModel for Home interactions and event-editor presentation.
     @State private var viewModel: HomeViewModel
 
     /// Engine providing real days for the current month.
@@ -26,10 +28,10 @@ struct HomeView: View {
 
     /// Creates the Home screen.
     /// - Parameters:
-    ///   - viewModel: Home presentation model.
+    ///   - viewModel: Home presentation model wired by the Composition Root.
     ///   - calendarEngine: Calendar structure generator.
     init(
-        viewModel: HomeViewModel = HomeViewModel(),
+        viewModel: HomeViewModel,
         calendarEngine: CalendarEngine = CalendarEngine()
     ) {
         _viewModel = State(initialValue: viewModel)
@@ -39,6 +41,8 @@ struct HomeView: View {
     // MARK: - Body
 
     var body: some View {
+        @Bindable var viewModel = viewModel
+
         ZStack(alignment: .top) {
             MonthBackgroundView()
 
@@ -48,13 +52,39 @@ struct HomeView: View {
                 UniverseMessageCard()
                     .padding(.horizontal, Spacing.pageHorizontal)
 
-                CalendarGridView(engine: calendarEngine)
-                    .padding(.horizontal, Spacing.pageHorizontal)
+                CalendarGridView(engine: calendarEngine) { day in
+                    viewModel.selectDay(day)
+                }
+                .padding(.horizontal, Spacing.pageHorizontal)
 
                 Spacer(minLength: 0)
             }
         }
         .accessibilityElement(children: .contain)
+        .fullScreenCover(
+            isPresented: $viewModel.isPresentingEventEditor,
+            onDismiss: {
+                viewModel.dismissEventEditor()
+            }
+        ) {
+            eventEditorCover(viewModel: viewModel)
+        }
+    }
+
+    // MARK: - Event Editor
+
+    /// Modal host for ``EventEditorView`` over the approved cosmic background.
+    @ViewBuilder
+    private func eventEditorCover(viewModel: HomeViewModel) -> some View {
+        ZStack {
+            MonthBackgroundView()
+
+            if let editorViewModel = viewModel.eventEditorViewModel {
+                EventEditorView(viewModel: editorViewModel) {
+                    viewModel.dismissEventEditor()
+                }
+            }
+        }
     }
 }
 
@@ -62,7 +92,33 @@ struct HomeView: View {
 
 #if DEBUG
 #Preview("Home") {
-    HomeView()
-        .environment(ThemeManager())
+    HomeView(
+        viewModel: HomeViewModel(
+            eventPersistenceService: EventPersistenceService(
+                repository: PreviewHomeEventRepository()
+            )
+        )
+    )
+    .environment(ThemeManager())
+}
+
+@MainActor
+private final class PreviewHomeEventRepository: EventRepositoryProtocol {
+
+    func create(_ event: Event) async throws {}
+
+    func fetchAll() async throws -> [Event] { [] }
+
+    func fetch(by id: UUID) async throws -> Event? { nil }
+
+    func fetch(on date: Date) async throws -> [Event] { [] }
+
+    func fetch(in interval: DateInterval) async throws -> [Event] { [] }
+
+    func update(_ event: Event) async throws {}
+
+    func delete(_ event: Event) async throws {}
+
+    func delete(id: UUID) async throws {}
 }
 #endif

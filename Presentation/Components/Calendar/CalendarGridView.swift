@@ -28,10 +28,19 @@ struct CalendarGridView: View {
     /// Locally selected day identifier.
     @State private var selectedDayID: String?
 
+    /// Called after an in-month day is selected.
+    private let onDaySelected: ((CalendarDay) -> Void)?
+
     // MARK: - Lifecycle
 
     /// Creates a grid for the engine's current month and year.
-    init(engine: CalendarEngine = CalendarEngine()) {
+    /// - Parameters:
+    ///   - engine: Calendar structure generator.
+    ///   - onDaySelected: Optional handler invoked with the tapped in-month day.
+    init(
+        engine: CalendarEngine = CalendarEngine(),
+        onDaySelected: ((CalendarDay) -> Void)? = nil
+    ) {
         let month = engine.currentMonth()
         let year = engine.currentYear()
         let generated = engine.generateDays(month: month, year: year)
@@ -39,6 +48,7 @@ struct CalendarGridView: View {
         self.displayedMonth = month
         self.displayedYear = year
         self.days = Array(generated.prefix(CalendarConstants.monthlyGridCellCount))
+        self.onDaySelected = onDaySelected
     }
 
     // MARK: - Body
@@ -74,6 +84,7 @@ struct CalendarGridView: View {
     private func selectDay(_ day: CalendarDay) {
         guard day.isCurrentMonth else { return }
         selectedDayID = day.id
+        onDaySelected?(day)
     }
 
     private func applyingSelection(to day: CalendarDay) -> CalendarDay {

@@ -57,17 +57,26 @@ final class EventEditorViewModel {
     /// Required by the Domain ``Event`` model when creating or updating.
     var date: Date = Date()
 
-    /// Optional reminder fire date.
-    var reminder: Date?
+    /// Reminder offset selected in the editor UI.
+    ///
+    /// Keeps ``reminder`` synchronized as an absolute fire date.
+    var reminderOption: EventReminderOption = .fifteenMinutes {
+        didSet {
+            reminder = reminderOption.reminderDate(relativeTo: date)
+        }
+    }
+
+    /// Optional reminder fire date derived from ``reminderOption``.
+    private(set) var reminder: Date?
 
     /// Recurrence rule applied to the event.
     var repeatRule: EventRepeatRule = .none
 
     /// Selected event category.
-    var category: EventCategory = .other
+    var category: EventCategory = .work
 
     /// Selected event priority.
-    var priority: EventPriority = .medium
+    var priority: EventPriority = .high
 
     /// Selected event status.
     var status: EventStatus = .pending
@@ -113,6 +122,7 @@ final class EventEditorViewModel {
         self.persistenceService = persistenceService
         self.validationService = validationService
         self.date = initialDate
+        self.reminder = EventReminderOption.fifteenMinutes.reminderDate(relativeTo: initialDate)
     }
 
     // MARK: - Mode Configuration
@@ -123,6 +133,7 @@ final class EventEditorViewModel {
         reset()
         mode = .create
         self.date = date
+        reminderOption = .fifteenMinutes
     }
 
     /// Prepares the ViewModel to edit an existing event.
@@ -134,7 +145,7 @@ final class EventEditorViewModel {
         title = event.title
         description = event.description
         date = event.date
-        reminder = event.reminder
+        reminderOption = EventReminderOption.option(for: event.reminder, eventDate: event.date)
         repeatRule = event.repeatRule
         category = event.category
         priority = event.priority
@@ -156,6 +167,18 @@ final class EventEditorViewModel {
         let draft = makeDraftEvent()
         validationIssues = validationService.validate(draft)
         return validationIssues.isEmpty
+    }
+
+    // MARK: - Save
+
+    /// Persists the current draft using create or update based on ``mode``.
+    func saveEvent() async {
+        switch mode {
+        case .create:
+            await createEvent()
+        case .edit:
+            await updateEvent()
+        }
     }
 
     // MARK: - Create
@@ -224,10 +247,11 @@ final class EventEditorViewModel {
         title = ""
         description = ""
         date = Date()
-        reminder = nil
+        reminderOption = .fifteenMinutes
+        reminder = reminderOption.reminderDate(relativeTo: date)
         repeatRule = .none
-        category = .other
-        priority = .medium
+        category = .work
+        priority = .high
         status = .pending
         color = .green
         validationIssues = []
@@ -254,12 +278,13 @@ final class EventEditorViewModel {
     /// - Returns: Draft event ready for validation or persistence.
     private func makeDraftEvent() -> Event {
         let now = Date()
+        let resolvedReminder = reminderOption.reminderDate(relativeTo: date)
         return Event(
             id: editingEventID ?? UUID(),
             title: title,
             description: description,
             date: date,
-            reminder: reminder,
+            reminder: resolvedReminder,
             repeatRule: repeatRule,
             category: category,
             priority: priority,

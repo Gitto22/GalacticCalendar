@@ -7,28 +7,59 @@ import Foundation
 
 /// Presentation model for the Home screen.
 ///
-/// Holds UI state only. Domain logic, persistence, CloudKit, and
-/// calendar/event behavior are intentionally out of scope for now.
+/// Owns Home interaction state for day selection and event-editor presentation.
+/// Persistence is delegated to ``EventPersistenceService`` through ``EventEditorViewModel``.
 @MainActor
 @Observable
 final class HomeViewModel {
 
-    // MARK: - Lifecycle
+    // MARK: - Dependencies
 
-    /// Creates an empty Home presentation model.
-    init() {
-        // TODO: Accept injected use cases / managers from the Composition Root.
-    }
+    /// Persistence façade used to construct the event editor ViewModel.
+    private let eventPersistenceService: EventPersistenceService
 
     // MARK: - State
 
-    // TODO: Expose the currently visible month for background and header binding.
-    // TODO: Expose Universe Message presentation state when the feature is connected.
-    // TODO: Expose calendar presentation state without implementing calendar logic here.
+    /// Absolute date of the currently selected calendar day, if any.
+    private(set) var selectedDate: Date?
+
+    /// `true` while the event editor modal is presented.
+    var isPresentingEventEditor: Bool = false
+
+    /// ViewModel driving the presented event editor, if any.
+    private(set) var eventEditorViewModel: EventEditorViewModel?
+
+    // MARK: - Lifecycle
+
+    /// Creates the Home presentation model.
+    /// - Parameter eventPersistenceService: Service injected from the Composition Root.
+    init(eventPersistenceService: EventPersistenceService) {
+        self.eventPersistenceService = eventPersistenceService
+    }
 
     // MARK: - Intents
 
-    // TODO: Define user intents for header actions.
-    // TODO: Define user intents for calendar interactions when the calendar module is connected.
-    // TODO: Define user intents for Universe Message interactions when enabled.
+    /// Selects an in-month day and presents the event editor for creation.
+    /// - Parameter day: Calendar day tapped by the user.
+    func selectDay(_ day: CalendarDay) {
+        guard day.isCurrentMonth else {
+            return
+        }
+
+        selectedDate = day.date
+
+        let editor = EventEditorViewModel(
+            persistenceService: eventPersistenceService,
+            initialDate: day.date
+        )
+        editor.prepareForCreation(on: day.date)
+        eventEditorViewModel = editor
+        isPresentingEventEditor = true
+    }
+
+    /// Dismisses the event editor without additional persistence side effects.
+    func dismissEventEditor() {
+        isPresentingEventEditor = false
+        eventEditorViewModel = nil
+    }
 }

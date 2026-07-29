@@ -71,6 +71,39 @@ enum Icons {
 
         /// Gift decoration reserved for future day features.
         static let gift = "gift.fill"
+
+        /// Title field glyph.
+        static let title = "calendar"
+
+        /// Description field glyph.
+        static let description = "doc.text"
+
+        /// Repeat selector glyph.
+        static let `repeat` = "arrow.triangle.2.circlepath"
+
+        /// Category selector glyph.
+        static let category = "rocket"
+
+        /// Priority selector glyph.
+        static let priority = "flag.fill"
+
+        /// High-priority upward arrow shown beside the priority value.
+        static let priorityUp = "arrow.up"
+
+        /// Chevron affordance for editor selector tiles.
+        static let selectorChevron = "chevron.down"
+
+        /// Status selector glyph.
+        static let status = "clock"
+
+        /// Event color selector glyph.
+        static let color = "paintpalette.fill"
+
+        /// Confirm / save checkmark.
+        static let confirm = "checkmark"
+
+        /// Save action sparkles.
+        static let save = "sparkles"
     }
 
     // MARK: - Home
