@@ -6,6 +6,8 @@
 import SwiftUI
 
 /// Container that hosts the approved Home calendar surface.
+///
+/// Displays the current month produced by ``CalendarEngine``.
 struct CalendarContainerView: View {
 
     // MARK: - Properties
@@ -26,8 +28,6 @@ struct CalendarContainerView: View {
     var body: some View {
         CalendarGridView(engine: engine)
             .padding(.horizontal, Spacing.pageHorizontal)
-            // TODO: Forward calendar interactions to HomeViewModel later.
-            // TODO: Connect eventColors / hasEvents through SwiftData later.
     }
 }
 

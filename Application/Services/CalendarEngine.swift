@@ -101,7 +101,9 @@ struct CalendarEngine: CalendarGenerating, Sendable {
     // MARK: - Monthly Generation
 
     /// Generates the 42-cell grid for the current month and year.
-    /// - Returns: Monday-first ``CalendarDay`` collection of count 42.
+    ///
+    /// Uses ``currentMonth()`` and ``currentYear()`` automatically.
+    /// - Returns: Monday-first ``CalendarDay`` collection with exactly 42 items.
     func generateCurrentMonth() -> [CalendarDay] {
         generateDays(month: currentMonth(), year: currentYear())
     }
@@ -110,7 +112,7 @@ struct CalendarEngine: CalendarGenerating, Sendable {
     ///
     /// 1. Leading outside-month days so the grid starts on Monday.
     /// 2. Every day of the requested month.
-    /// 3. Trailing outside-month days until the collection reaches 42.
+    /// 3. Trailing outside-month days until the collection reaches exactly 42.
     /// - Parameters:
     ///   - month: Month number in `1...12`.
     ///   - year: Full year value.
@@ -127,7 +129,12 @@ struct CalendarEngine: CalendarGenerating, Sendable {
         days.append(contentsOf: makeCurrentMonthDays(month: month, year: year))
         days.append(contentsOf: makeTrailingDays(month: month, year: year, currentCount: days.count))
 
-        return Array(days.prefix(monthlyGridCellCount))
+        let grid = Array(days.prefix(monthlyGridCellCount))
+        assert(
+            grid.count == monthlyGridCellCount || grid.isEmpty,
+            "CalendarEngine must produce exactly \(monthlyGridCellCount) cells for a valid month."
+        )
+        return grid
     }
 
     // MARK: - Weekly Generation (future surfaces)

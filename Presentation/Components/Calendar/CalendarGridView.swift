@@ -7,8 +7,8 @@ import SwiftUI
 
 /// Custom monthly calendar grid matching the approved Galactic Calendar design.
 ///
-/// Renders days produced by ``CalendarEngine``.
-/// No `DatePicker` or system calendar UI components are used.
+/// Draws the current month exclusively from ``CalendarEngine``
+/// as a fixed 7×6 (42-cell) grid. No simulated data.
 struct CalendarGridView: View {
 
     // MARK: - Environment
@@ -18,20 +18,30 @@ struct CalendarGridView: View {
 
     // MARK: - Properties
 
-    /// Domain days produced by the calendar engine.
+    /// Exactly 42 domain days for the visible month grid.
     private let days: [CalendarDay]
+
+    /// Month number requested from the engine.
+    private let displayedMonth: Int
+
+    /// Year requested from the engine.
+    private let displayedYear: Int
+
+    /// Identifier of the locally selected day, if any.
+    @State private var selectedDayID: String?
 
     // MARK: - Lifecycle
 
-    /// Creates a calendar grid.
-    /// - Parameter days: Domain days to render.
-    init(days: [CalendarDay]) {
-        self.days = Array(days.prefix(CalendarConstants.sampleCellCount))
-    }
-
-    /// Creates a calendar grid for the engine's current month.
+    /// Creates a calendar grid for the engine's current month and year.
+    /// - Parameter engine: Calendar structure generator.
     init(engine: CalendarEngine = CalendarEngine()) {
-        self.init(days: engine.generateCurrentMonth())
+        let month = engine.currentMonth()
+        let year = engine.currentYear()
+        let generated = engine.generateDays(month: month, year: year)
+
+        self.displayedMonth = month
+        self.displayedYear = year
+        self.days = Array(generated.prefix(CalendarConstants.monthlyGridCellCount))
     }
 
     // MARK: - Body
@@ -42,22 +52,57 @@ struct CalendarGridView: View {
 
             LazyVGrid(columns: Self.columns, spacing: gridSpacing) {
                 ForEach(days) { day in
-                    CalendarDayCell(
-                        dayNumber: day.dayNumber,
-                        isWeekend: day.isWeekend(),
-                        states: CalendarDayPresentationMapper.states(for: day),
-                        indicatorColors: CalendarDayPresentationMapper.colors(for: day.eventColors)
-                    )
+                    dayCell(for: day)
                 }
             }
             .frame(maxWidth: .infinity)
         }
         .accessibilityElement(children: .contain)
+        .accessibilityLabel(
+            Text("\(displayedMonth)/\(displayedYear)")
+        )
+    }
+
+    // MARK: - Cells
+
+    /// Builds a tappable day cell with selection support prepared.
+    /// - Parameter day: Domain day from ``CalendarEngine``.
+    /// - Returns: Day cell view.
+    @ViewBuilder
+    private func dayCell(for day: CalendarDay) -> some View {
+        let presentedDay = applyingSelection(to: day)
+
+        CalendarDayCell(day: presentedDay)
+            .contentShape(Rectangle())
+            .onTapGesture {
+                selectDay(day)
+            }
+    }
+
+    // MARK: - Selection
+
+    /// Marks a day as selected when it belongs to the current month.
+    /// - Parameter day: Tapped domain day.
+    private func selectDay(_ day: CalendarDay) {
+        guard day.isCurrentMonth else {
+            return
+        }
+
+        selectedDayID = day.id
+    }
+
+    /// Returns a copy of the day with the local selection flag applied.
+    /// - Parameter day: Source domain day.
+    /// - Returns: Day ready for presentation.
+    private func applyingSelection(to day: CalendarDay) -> CalendarDay {
+        var presented = day
+        presented.isSelected = (day.id == selectedDayID)
+        return presented
     }
 
     // MARK: - Grid
 
-    /// Seven equal-width columns for the monthly layout.
+    /// Seven equal-width columns → 42 cells produce six rows.
     private static let columns: [GridItem] = Array(
         repeating: GridItem(.flexible(), spacing: Spacing.xxs),
         count: CalendarConstants.columnCount
@@ -72,7 +117,7 @@ struct CalendarGridView: View {
 // MARK: - Previews
 
 #if DEBUG
-#Preview("Calendar Grid") {
+#Preview("Calendar Grid — Current Month") {
     ZStack {
         MonthBackgroundView()
         CalendarGridView()

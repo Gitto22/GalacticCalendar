@@ -5,10 +5,7 @@
 
 import SwiftUI
 
-/// Prepared visual states for a calendar day cell.
-///
-/// These states describe presentation only. Resolving them from
-/// real calendar/event data remains deferred.
+/// Visual states supported by a calendar day cell.
 enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiable {
 
     // MARK: - Cases
@@ -16,7 +13,7 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
     /// Standard in-month day.
     case normal
 
-    /// Day matching "today".
+    /// Day matching today.
     case current
 
     /// Explicitly selected day.
@@ -25,7 +22,7 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
     /// Day belonging to the previous or next month.
     case outsideMonth
 
-    /// Day prepared to show event indicators.
+    /// Day prepared to show event indicators (future).
     case withEvent
 
     /// Day prepared for a future gift decoration.
@@ -39,7 +36,8 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
 
 /// Single day cell for the approved monthly calendar grid.
 ///
-/// Presentation architecture only. No selection or event logic yet.
+/// Renders day number with normal / outside-month / today / selected states.
+/// Real events are intentionally not shown yet.
 struct CalendarDayCell: View {
 
     // MARK: - Environment
@@ -55,72 +53,86 @@ struct CalendarDayCell: View {
     /// Whether the day falls on Saturday or Sunday.
     let isWeekend: Bool
 
-    /// Prepared visual states for this cell.
+    /// Visual states derived from ``CalendarDay``.
     let states: Set<CalendarDayCellState>
-
-    /// Event indicator colors shown under the day number.
-    let indicatorColors: [Color]
 
     // MARK: - Lifecycle
 
-    /// Creates a day cell.
+    /// Creates a day cell from a domain ``CalendarDay``.
+    /// - Parameter day: Domain day produced by ``CalendarEngine``.
+    init(day: CalendarDay) {
+        self.dayNumber = day.dayNumber
+        self.isWeekend = day.isWeekend()
+        self.states = CalendarDayPresentationMapper.states(for: day)
+    }
+
+    /// Creates a day cell from explicit presentation values.
     /// - Parameters:
     ///   - dayNumber: Day of month to display.
     ///   - isWeekend: Weekend styling flag.
-    ///   - states: Prepared visual states.
-    ///   - indicatorColors: Event indicator colors.
+    ///   - states: Visual states.
     init(
         dayNumber: Int,
         isWeekend: Bool = false,
-        states: Set<CalendarDayCellState> = [.normal],
-        indicatorColors: [Color] = []
+        states: Set<CalendarDayCellState> = [.normal]
     ) {
         self.dayNumber = dayNumber
         self.isWeekend = isWeekend
         self.states = states.isEmpty ? [.normal] : states
-        self.indicatorColors = indicatorColors
     }
 
     // MARK: - Body
 
     var body: some View {
-        ZStack(alignment: .topTrailing) {
-            VStack(spacing: Spacing.xxxs) {
-                Text(dayNumberText)
-                    .font(dayNumberFont)
-                    .fontWeight(.medium)
-                    .foregroundStyle(dayNumberColor)
+        VStack(spacing: Spacing.xxxs) {
+            Text(dayNumberText)
+                .font(dayNumberFont)
+                .fontWeight(.medium)
+                .foregroundStyle(dayNumberColor)
 
-                EventIndicatorsView(colors: visibleIndicatorColors)
-            }
-            .frame(maxWidth: .infinity)
-            .frame(minHeight: dayCellMinHeight)
-            .padding(.vertical, Spacing.xxs)
-
-            giftBadge
+            // Layout slot reserved for future events. Empty for now.
+            EventIndicatorsView(colors: [])
         }
+        .frame(maxWidth: .infinity)
+        .frame(minHeight: dayCellMinHeight)
+        .padding(.vertical, Spacing.xxs)
         .background(ColorPalette.dayCellFill, in: cellShape)
         .overlay(cellBorder)
         .currentDayHighlight(isHighlighted)
-        .opacity(states.contains(.outsideMonth) ? ColorPalette.dayOutsideOpacity : 1)
+        .opacity(isOutsideMonth ? ColorPalette.dayOutsideOpacity : 1)
         .accessibilityLabel(Text(dayNumberText))
+        .accessibilityAddTraits(accessibilityTraits)
     }
 
-    // MARK: - Decorations
+    // MARK: - State Helpers
 
-    /// Gift badge reserved for future features.
-    @ViewBuilder
-    private var giftBadge: some View {
-        if states.contains(.withGift) {
-            Image(systemName: Icons.Events.gift)
-                .font(Typography.caption2)
-                .foregroundStyle(ColorPalette.universeAccent)
-                .frame(
-                    width: LayoutConstants.dayGiftBadgeSize,
-                    height: LayoutConstants.dayGiftBadgeSize
-                )
-                .padding(Spacing.xxxs)
+    /// Whether the cell belongs to another month.
+    private var isOutsideMonth: Bool {
+        states.contains(.outsideMonth)
+    }
+
+    /// Whether the cell represents today.
+    private var isCurrent: Bool {
+        states.contains(.current)
+    }
+
+    /// Whether the cell is selected.
+    private var isSelected: Bool {
+        states.contains(.selected)
+    }
+
+    /// Whether the cell uses the approved blue highlight.
+    private var isHighlighted: Bool {
+        isCurrent || isSelected
+    }
+
+    /// Accessibility traits reflecting current/selected states.
+    private var accessibilityTraits: AccessibilityTraits {
+        var traits: AccessibilityTraits = []
+        if isSelected {
+            traits.insert(.isSelected)
         }
+        return traits
     }
 
     // MARK: - Visual Helpers
@@ -159,36 +171,19 @@ struct CalendarDayCell: View {
     private var dayNumberColor: Color {
         isWeekend ? ColorPalette.weekend : ColorPalette.onImagePrimary
     }
-
-    /// Whether the blue glow highlight should be shown.
-    private var isHighlighted: Bool {
-        states.contains(.selected) || states.contains(.current)
-    }
-
-    /// Indicators shown when the cell is prepared for events.
-    private var visibleIndicatorColors: [Color] {
-        if states.contains(.withEvent) || indicatorColors.isEmpty == false {
-            return indicatorColors
-        }
-
-        return []
-    }
 }
 
 // MARK: - Previews
 
 #if DEBUG
 #Preview("Calendar Day Cells") {
+    let engine = CalendarEngine()
+    let days = Array(engine.generateCurrentMonth().prefix(7))
+
     HStack(spacing: Spacing.xs) {
-        CalendarDayCell(dayNumber: 10, states: [.normal])
-        CalendarDayCell(
-            dayNumber: 11,
-            states: [.selected, .withEvent],
-            indicatorColors: Array(ColorPalette.eventIndicatorColors.prefix(3))
-        )
-        CalendarDayCell(dayNumber: 14, states: [.withEvent, .withGift], indicatorColors: [ColorPalette.eventIndicatorGreen])
-        CalendarDayCell(dayNumber: 15, isWeekend: false, states: [.current])
-        CalendarDayCell(dayNumber: 31, states: [.outsideMonth])
+        ForEach(days) { day in
+            CalendarDayCell(day: day)
+        }
     }
     .padding()
     .background(MonthBackgroundView())

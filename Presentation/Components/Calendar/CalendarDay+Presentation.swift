@@ -34,6 +34,8 @@ enum CalendarDayPresentationMapper {
     }
 
     /// Builds prepared cell states from a domain day.
+    ///
+    /// Event and gift states are ignored until those features are connected.
     /// - Parameter day: Domain calendar day.
     /// - Returns: Visual states for ``CalendarDayCell``.
     static func states(for day: CalendarDay) -> Set<CalendarDayCellState> {
@@ -49,10 +51,6 @@ enum CalendarDayPresentationMapper {
 
         if day.isSelected {
             states.insert(.selected)
-        }
-
-        if day.hasEvents {
-            states.insert(.withEvent)
         }
 
         if states.isEmpty {
