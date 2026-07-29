@@ -136,6 +136,40 @@ enum ColorPalette {
 
     /// Opacity used by card glow shadows.
     static let glowCardShadowOpacity = 0.45
+
+    // MARK: - Calendar
+
+    /// Weekend text color for Saturday and Sunday labels/numbers.
+    static let weekend = Color(red: 1.00, green: 0.42, blue: 0.48)
+
+    /// Fill used by day cells over the monthly background.
+    static let dayCellFill = Color.black.opacity(0.32)
+
+    /// Subtle border used by non-highlighted day cells.
+    static let dayCellBorder = Color.white.opacity(0.10)
+
+    /// Opacity applied to days outside the visible month.
+    static let dayOutsideOpacity = 0.35
+
+    /// First event indicator color (purple).
+    static let eventIndicatorPurple = Color(red: 0.72, green: 0.48, blue: 1.00)
+
+    /// Second event indicator color (green).
+    static let eventIndicatorGreen = Color(red: 0.30, green: 0.85, blue: 0.52)
+
+    /// Third event indicator color (blue).
+    static let eventIndicatorBlue = Color(red: 0.45, green: 0.78, blue: 1.00)
+
+    /// Fourth event indicator color (orange).
+    static let eventIndicatorOrange = Color(red: 1.00, green: 0.62, blue: 0.28)
+
+    /// Ordered palette used by event indicator dots.
+    static let eventIndicatorColors: [Color] = [
+        eventIndicatorPurple,
+        eventIndicatorGreen,
+        eventIndicatorBlue,
+        eventIndicatorOrange
+    ]
 }
 
 // MARK: - Adaptive Color Support

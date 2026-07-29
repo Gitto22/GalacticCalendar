@@ -3,3 +3,11 @@
 "universe_message_body" = "The best time to start is today.";
 "universe_message_caption" = "Message from the Universe";
 "universe_message_inspiration" = "Inspiration";
+
+"weekday_mon_short" = "MON";
+"weekday_tue_short" = "TUE";
+"weekday_wed_short" = "WED";
+"weekday_thu_short" = "THU";
+"weekday_fri_short" = "FRI";
+"weekday_sat_short" = "SAT";
+"weekday_sun_short" = "SUN";

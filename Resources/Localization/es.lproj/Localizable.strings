@@ -3,3 +3,11 @@
 "universe_message_body" = "El mejor momento para empezar es hoy.";
 "universe_message_caption" = "Mensaje del Universo";
 "universe_message_inspiration" = "Inspiración";
+
+"weekday_mon_short" = "LUN";
+"weekday_tue_short" = "MAR";
+"weekday_wed_short" = "MIÉ";
+"weekday_thu_short" = "JUE";
+"weekday_fri_short" = "VIE";
+"weekday_sat_short" = "SÁB";
+"weekday_sun_short" = "DOM";

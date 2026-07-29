@@ -68,6 +68,9 @@ enum Icons {
 
         /// Event reminder.
         static let reminder = "bell"
+
+        /// Gift decoration reserved for future day features.
+        static let gift = "gift.fill"
     }
 
     // MARK: - Home

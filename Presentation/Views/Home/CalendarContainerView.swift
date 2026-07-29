@@ -5,20 +5,16 @@
 
 import SwiftUI
 
-/// Container that will host the Home calendar surface.
-///
-/// No calendar grid, selection, or event rendering is implemented yet.
+/// Container that hosts the approved Home calendar surface.
 struct CalendarContainerView: View {
 
     // MARK: - Body
 
     var body: some View {
-        // TODO: Embed the approved calendar UI without redesigning it.
-        // TODO: Forward calendar interactions to HomeViewModel later.
-        // TODO: Keep layout constraints aligned with the existing Home design.
-        Color.clear
-            .frame(maxWidth: .infinity, maxHeight: .infinity)
-            .accessibilityHidden(true)
+        CalendarGridView()
+            .padding(.horizontal, Spacing.pageHorizontal)
+            // TODO: Forward calendar interactions to HomeViewModel later.
+            // TODO: Replace sample days with SwiftData-backed domain models.
     }
 }
 
@@ -26,6 +22,10 @@ struct CalendarContainerView: View {
 
 #if DEBUG
 #Preview("Calendar Container") {
-    CalendarContainerView()
+    ZStack {
+        MonthBackgroundView()
+        CalendarContainerView()
+    }
+    .environment(ThemeManager())
 }
 #endif

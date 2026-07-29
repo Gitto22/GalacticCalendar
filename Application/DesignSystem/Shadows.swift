@@ -77,6 +77,13 @@ enum Shadows {
         radius: Spacing.xs,
         y: 0
     )
+
+    /// Blue glow shadow for the current/selected day highlight.
+    static let dayHighlight = ShadowStyle(
+        color: ColorPalette.onImageAccent.opacity(ColorPalette.glowControlShadowOpacity),
+        radius: Spacing.xs,
+        y: 0
+    )
 }
 
 // MARK: - View Convenience
