@@ -19,8 +19,11 @@ enum CalendarConstants {
     /// Maximum number of rows in the monthly grid.
     static let maxRowCount = 6
 
-    /// Number of day cells used by the sample monthly grid architecture.
+    /// Number of day cells in the approved monthly grid (6 rows × 7 columns).
     static let sampleCellCount = columnCount * maxRowCount
+
+    /// Alias for the fixed monthly grid capacity used by ``CalendarEngine``.
+    static let monthlyGridCellCount = sampleCellCount
 
     /// Maximum event indicator dots rendered under a day number.
     static let maxEventIndicators = 4

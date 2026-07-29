@@ -8,13 +8,26 @@ import SwiftUI
 /// Container that hosts the approved Home calendar surface.
 struct CalendarContainerView: View {
 
+    // MARK: - Properties
+
+    /// Engine that generates the monthly day structure.
+    private let engine: CalendarEngine
+
+    // MARK: - Lifecycle
+
+    /// Creates the calendar container.
+    /// - Parameter engine: Calendar structure generator.
+    init(engine: CalendarEngine = CalendarEngine()) {
+        self.engine = engine
+    }
+
     // MARK: - Body
 
     var body: some View {
-        CalendarGridView()
+        CalendarGridView(engine: engine)
             .padding(.horizontal, Spacing.pageHorizontal)
             // TODO: Forward calendar interactions to HomeViewModel later.
-            // TODO: Replace sample days with SwiftData-backed domain models.
+            // TODO: Connect eventColors / hasEvents through SwiftData later.
     }
 }
 
