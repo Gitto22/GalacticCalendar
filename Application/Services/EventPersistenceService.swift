@@ -23,25 +23,40 @@ enum EventPersistenceError: Error, Equatable, Sendable {
     case unknown
 }
 
-/// Application entry point for event persistence used by ViewModels.
+/// Reactive application façade for event persistence.
 ///
-/// Validates domain events, then delegates to ``EventRepositoryProtocol``.
-/// Contains no UI logic.
+/// ## Single Source of Truth
+/// ``events`` is the in-memory catalog observed by ViewModels.
+/// Mutations write through ``EventRepositoryProtocol``, then refresh the catalog.
+/// Presentation must read from this service (or ViewModels that derive from it),
+/// not from ad-hoc repository fetches in views.
+///
+/// ## CloudKit
+/// When remote changes arrive, call ``refresh()`` to realign the catalog
+/// without introducing NotificationCenter fan-out.
 @MainActor
 @Observable
 final class EventPersistenceService {
 
-    // MARK: - Properties
+    // MARK: - Dependencies
 
-    /// Repository responsible for SwiftData operations.
+    /// Imperative SwiftData (or future CloudKit) repository.
     private let repository: any EventRepositoryProtocol
 
     /// Validator applied before create/update.
     private let validationService: EventValidationService
 
-    /// Monotonic revision bumped after every successful create, update, or delete.
+    /// Calendar used for day-boundary queries against the catalog.
+    private let calendar: Calendar
+
+    // MARK: - Source of Truth
+
+    /// In-memory event catalog. ViewModels observe this array for automatic UI sync.
+    private(set) var events: [Event] = []
+
+    /// Monotonic token advanced whenever ``events`` is replaced after a mutation or refresh.
     ///
-    /// Calendar UI observes this value to refresh event indicators automatically.
+    /// Kept for lightweight identity/`task(id:)` bridging; prefer observing ``events`` directly.
     private(set) var eventsRevision: Int = 0
 
     // MARK: - Lifecycle
@@ -50,88 +65,135 @@ final class EventPersistenceService {
     /// - Parameters:
     ///   - repository: Event repository implementation.
     ///   - validationService: Event validator.
+    ///   - calendar: Calendar for day queries.
     init(
         repository: any EventRepositoryProtocol,
-        validationService: EventValidationService = EventValidationService()
+        validationService: EventValidationService = EventValidationService(),
+        calendar: Calendar = .current
     ) {
         self.repository = repository
         self.validationService = validationService
+        self.calendar = calendar
+    }
+
+    // MARK: - Bootstrap
+
+    /// Loads the catalog from the underlying repository.
+    ///
+    /// Call once at app start (Composition Root / root scene) so observers have data.
+    func bootstrap() async {
+        await refresh()
+    }
+
+    /// Reloads ``events`` from the repository and advances ``eventsRevision``.
+    func refresh() async {
+        do {
+            let fetched = try await repository.fetchAll()
+            replaceCatalog(with: fetched)
+        } catch {
+            // Keep the last known catalog; surface errors on the next mutating call.
+        }
+    }
+
+    // MARK: - Catalog Queries (sync, reactive)
+
+    /// Returns catalog events occurring on the given calendar day, sorted by time.
+    /// - Parameter date: Day anchor.
+    /// - Returns: Matching events from ``events``.
+    func events(on date: Date) -> [Event] {
+        let dayStart = calendar.startOfDay(for: date)
+        return events
+            .filter { calendar.isDate($0.date, inSameDayAs: dayStart) }
+            .sorted { $0.date < $1.date }
+    }
+
+    /// Returns a catalog event by identifier.
+    /// - Parameter id: Event identifier.
+    /// - Returns: Matching event, if present in ``events``.
+    func event(id: UUID) -> Event? {
+        events.first { $0.id == id }
+    }
+
+    /// Groups catalog events by start-of-day for the given interval.
+    /// - Parameter interval: Query interval (`end` exclusive).
+    /// - Returns: Day-start keys mapped to events.
+    func eventsGroupedByDay(in interval: DateInterval) -> [Date: [Event]] {
+        let filtered = events.filter { event in
+            event.date >= interval.start && event.date < interval.end
+        }
+        return Dictionary(grouping: filtered) { event in
+            calendar.startOfDay(for: event.date)
+        }
+    }
+
+    /// Returns catalog events whose ``RepeatRule`` is recurring.
+    /// - Returns: Recurring events (occurrences are not expanded).
+    func recurringEvents() -> [Event] {
+        events.filter(\.repeatRule.isRecurring)
     }
 
     // MARK: - Create
 
-    /// Validates and creates an event.
+    /// Validates and creates an event, then refreshes the catalog.
     /// - Parameter event: Event to persist.
     func create(_ event: Event) async throws {
         try ensureValid(event)
         do {
             try await repository.create(event)
-            bumpEventsRevision()
+            await refresh()
         } catch {
             throw mapRepositoryError(error)
         }
     }
 
-    // MARK: - Read
+    // MARK: - Read (async façade — prefers catalog)
 
-    /// Returns all persisted events.
+    /// Returns all catalog events.
     func fetchAll() async throws -> [Event] {
-        do {
-            return try await repository.fetchAll()
-        } catch {
-            throw mapRepositoryError(error)
-        }
+        events
     }
 
-    /// Returns an event by identifier.
+    /// Returns a catalog event by identifier.
     /// - Parameter id: Event identifier.
     func fetch(by id: UUID) async throws -> Event? {
-        do {
-            return try await repository.fetch(by: id)
-        } catch {
-            throw mapRepositoryError(error)
-        }
+        event(id: id)
     }
 
-    /// Returns events for a specific calendar day.
+    /// Returns catalog events for a specific calendar day.
     /// - Parameter date: Day anchor.
     func fetch(on date: Date) async throws -> [Event] {
-        do {
-            return try await repository.fetch(on: date)
-        } catch {
-            throw mapRepositoryError(error)
-        }
+        events(on: date)
     }
 
-    /// Returns events inside a date interval.
+    /// Returns catalog events inside a date interval.
     /// - Parameter interval: Query interval.
     func fetch(in interval: DateInterval) async throws -> [Event] {
-        do {
-            return try await repository.fetch(in: interval)
-        } catch {
-            throw mapRepositoryError(error)
+        events.filter { event in
+            event.date >= interval.start && event.date < interval.end
         }
+        .sorted { $0.date < $1.date }
     }
 
-    /// Returns events inside a date interval grouped by start-of-day.
+    /// Returns catalog events grouped by start-of-day.
     /// - Parameter interval: Query interval.
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] {
-        do {
-            return try await repository.fetchGroupedByDay(in: interval)
-        } catch {
-            throw mapRepositoryError(error)
-        }
+        eventsGroupedByDay(in: interval)
+    }
+
+    /// Returns recurring catalog events.
+    func fetchRecurring() async throws -> [Event] {
+        recurringEvents()
     }
 
     // MARK: - Update
 
-    /// Validates and updates an event.
+    /// Validates and updates an event, then refreshes the catalog.
     /// - Parameter event: Event to update.
     func update(_ event: Event) async throws {
         try ensureValid(event)
         do {
             try await repository.update(event)
-            bumpEventsRevision()
+            await refresh()
         } catch {
             throw mapRepositoryError(error)
         }
@@ -139,23 +201,23 @@ final class EventPersistenceService {
 
     // MARK: - Delete
 
-    /// Deletes an event.
+    /// Deletes an event, then refreshes the catalog.
     /// - Parameter event: Event to delete.
     func delete(_ event: Event) async throws {
         do {
             try await repository.delete(event)
-            bumpEventsRevision()
+            await refresh()
         } catch {
             throw mapRepositoryError(error)
         }
     }
 
-    /// Deletes an event by identifier.
+    /// Deletes an event by identifier, then refreshes the catalog.
     /// - Parameter id: Event identifier.
     func delete(id: UUID) async throws {
         do {
             try await repository.delete(id: id)
-            bumpEventsRevision()
+            await refresh()
         } catch {
             throw mapRepositoryError(error)
         }
@@ -163,7 +225,7 @@ final class EventPersistenceService {
 
     // MARK: - Duplicate
 
-    /// Creates a persisted duplicate of an existing event.
+    /// Creates a persisted duplicate, then refreshes the catalog via ``create(_:)``.
     /// - Parameter event: Source event.
     /// - Returns: Newly created duplicate.
     @discardableResult
@@ -175,8 +237,9 @@ final class EventPersistenceService {
 
     // MARK: - Private
 
-    /// Advances ``eventsRevision`` so observers reload calendar indicators.
-    private func bumpEventsRevision() {
+    /// Replaces the catalog and advances the revision token.
+    private func replaceCatalog(with newEvents: [Event]) {
+        events = newEvents.sorted { $0.date < $1.date }
         eventsRevision += 1
     }
 

@@ -34,7 +34,10 @@ final class EventEntity {
     /// Optional reminder fire date.
     var reminder: Date?
 
-    /// Raw value for ``EventRepeatRule``.
+    /// Raw value for ``RepeatRule`` persistence encoding.
+    ///
+    /// Stores a plain frequency string or a versioned JSON envelope
+    /// produced by ``RepeatRule/encodeForPersistence()``.
     var repeatRuleRawValue: String
 
     // MARK: - Classification

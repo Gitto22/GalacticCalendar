@@ -13,35 +13,42 @@ import SwiftUI
 /// 3. ``UniverseMessageCard``
 /// 4. ``CalendarGridView``
 ///
-/// Day tap routes to ``DayEventsView`` when events exist, otherwise to ``EventEditorView``.
+/// Day tap routes by event count:
+/// 0 → create editor, 1 → edit editor, 2+ → day events list.
 struct HomeView: View {
+
+    // MARK: - Environment
+
+    /// Reactive event catalog bootstrapped on appearance.
+    @Environment(EventPersistenceService.self) private var eventPersistenceService
 
     // MARK: - Properties
 
     /// ViewModel for Home interactions and modal presentation.
     @State private var viewModel: HomeViewModel
 
-    /// Engine providing real days for the current month.
-    private let calendarEngine: CalendarEngine
+    /// Grid ViewModel reading the reactive event catalog.
+    @State private var calendarGridViewModel: CalendarGridViewModel
 
     // MARK: - Lifecycle
 
     /// Creates the Home screen.
     /// - Parameters:
-    ///   - viewModel: Home presentation model wired by the Composition Root.
-    ///   - calendarEngine: Calendar structure generator.
+    ///   - viewModel: Home presentation model.
+    ///   - calendarGridViewModel: Grid presentation model bound to the event catalog.
     init(
         viewModel: HomeViewModel,
-        calendarEngine: CalendarEngine = CalendarEngine()
+        calendarGridViewModel: CalendarGridViewModel
     ) {
         _viewModel = State(initialValue: viewModel)
-        self.calendarEngine = calendarEngine
+        _calendarGridViewModel = State(initialValue: calendarGridViewModel)
     }
 
     // MARK: - Body
 
     var body: some View {
         @Bindable var viewModel = viewModel
+        @Bindable var calendarGridViewModel = calendarGridViewModel
 
         ZStack(alignment: .top) {
             MonthBackgroundView()
@@ -52,7 +59,7 @@ struct HomeView: View {
                 UniverseMessageCard()
                     .padding(.horizontal, Spacing.pageHorizontal)
 
-                CalendarGridView(engine: calendarEngine) { day in
+                CalendarGridView(viewModel: calendarGridViewModel) { day in
                     Task { await viewModel.selectDay(day) }
                 }
                 .padding(.horizontal, Spacing.pageHorizontal)
@@ -61,6 +68,9 @@ struct HomeView: View {
             }
         }
         .accessibilityElement(children: .contain)
+        .task {
+            await eventPersistenceService.bootstrap()
+        }
         .fullScreenCover(
             isPresented: $viewModel.isPresentingDayEvents,
             onDismiss: {
@@ -116,9 +126,12 @@ struct HomeView: View {
         repository: PreviewHomeEventRepository()
     )
 
-    HomeView(viewModel: HomeViewModel(eventPersistenceService: persistence))
-        .environment(ThemeManager())
-        .environment(persistence)
+    HomeView(
+        viewModel: HomeViewModel(eventPersistenceService: persistence),
+        calendarGridViewModel: CalendarGridViewModel(persistenceService: persistence)
+    )
+    .environment(ThemeManager())
+    .environment(persistence)
 }
 
 @MainActor
@@ -135,6 +148,8 @@ private final class PreviewHomeEventRepository: EventRepositoryProtocol {
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
+
+    func fetchRecurring() async throws -> [Event] { [] }
 
     func update(_ event: Event) async throws {}
 

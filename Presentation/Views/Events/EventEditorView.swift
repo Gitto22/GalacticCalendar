@@ -51,6 +51,7 @@ struct EventEditorView: View {
         .glassEffect(.subtle, cornerRadius: Spacing.Radius.xl)
         .padding(.horizontal, Spacing.pageHorizontal)
         .onChange(of: viewModel.didCompleteMutation) { _, completed in
+            // Catalog refresh already happened inside EventPersistenceService.
             if completed {
                 onDismiss()
             }
@@ -233,7 +234,7 @@ struct EventEditorView: View {
                     .lineLimit(1)
             }
         } menuContent: {
-            ForEach(EventRepeatRule.allCases) { rule in
+            ForEach(RepeatRule.editorSelectableRules) { rule in
                 Button(EventEditorDisplayNames.title(for: rule)) {
                     viewModel.repeatRule = rule
                 }
@@ -537,6 +538,8 @@ private final class PreviewEventRepository: EventRepositoryProtocol {
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
+
+    func fetchRecurring() async throws -> [Event] { [] }
 
     func update(_ event: Event) async throws {}
 

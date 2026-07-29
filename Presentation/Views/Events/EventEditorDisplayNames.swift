@@ -31,8 +31,13 @@ enum EventEditorDisplayNames {
     // MARK: - Repeat
 
     /// Localized title for a repeat rule.
-    static func title(for rule: EventRepeatRule) -> String {
-        switch rule {
+    static func title(for rule: RepeatRule) -> String {
+        title(for: rule.frequency)
+    }
+
+    /// Localized title for a predefined repeat frequency.
+    static func title(for frequency: RepeatFrequency) -> String {
+        switch frequency {
         case .none:
             String(localized: "event_repeat_none")
         case .daily:

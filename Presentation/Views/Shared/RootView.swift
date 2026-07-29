@@ -26,17 +26,26 @@ struct RootView: View {
     /// Stable Home ViewModel created once from the Composition Root.
     @State private var homeViewModel: HomeViewModel?
 
+    /// Stable calendar grid ViewModel bound to the reactive event catalog.
+    @State private var calendarGridViewModel: CalendarGridViewModel?
+
     // MARK: - Body
 
     var body: some View {
         NavigationStack(path: Bindable(navigationManager).path) {
             Group {
-                if let homeViewModel {
-                    HomeView(viewModel: homeViewModel)
+                if let homeViewModel, let calendarGridViewModel {
+                    HomeView(
+                        viewModel: homeViewModel,
+                        calendarGridViewModel: calendarGridViewModel
+                    )
                 } else {
                     Color.clear
                         .task {
-                            homeViewModel = ViewModelFactory(container: container).makeHomeViewModel()
+                            let factory = ViewModelFactory(container: container)
+                            homeViewModel = factory.makeHomeViewModel()
+                            calendarGridViewModel = factory.makeCalendarGridViewModel()
+                            await container.eventPersistenceService.bootstrap()
                         }
                 }
             }
@@ -57,8 +66,11 @@ struct RootView: View {
     private func destination(for route: Route) -> some View {
         switch route {
         case .root:
-            if let homeViewModel {
-                HomeView(viewModel: homeViewModel)
+            if let homeViewModel, let calendarGridViewModel {
+                HomeView(
+                    viewModel: homeViewModel,
+                    calendarGridViewModel: calendarGridViewModel
+                )
             }
         }
     }

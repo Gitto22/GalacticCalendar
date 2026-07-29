@@ -5,35 +5,9 @@
 
 import Foundation
 
-/// Recurrence rule for a Galactic Calendar event.
-enum EventRepeatRule: String, Sendable, CaseIterable, Codable, Hashable, Identifiable {
-
-    // MARK: - Cases
-
-    /// Event does not repeat.
-    case none
-
-    /// Event repeats every day.
-    case daily
-
-    /// Event repeats every week.
-    case weekly
-
-    /// Event repeats every month.
-    case monthly
-
-    /// Event repeats every year.
-    case yearly
-
-    // MARK: - Identifiable
-
-    /// Stable identifier matching the raw value.
-    var id: String { rawValue }
-}
-
 /// Domain entity representing a calendar event.
 ///
-/// Pure Foundation model prepared for SwiftData / CloudKit persistence later.
+/// Pure Foundation model prepared for SwiftData / CloudKit persistence.
 struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
 
     // MARK: - Identity
@@ -55,8 +29,8 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
     /// Optional reminder fire date.
     var reminder: Date?
 
-    /// Recurrence rule.
-    var repeatRule: EventRepeatRule
+    /// Recurrence rule (stored and restored; occurrences are not expanded yet).
+    var repeatRule: RepeatRule
 
     // MARK: - Classification
 
@@ -102,7 +76,7 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
         description: String = "",
         date: Date,
         reminder: Date? = nil,
-        repeatRule: EventRepeatRule = .none,
+        repeatRule: RepeatRule = .none,
         category: EventCategory = .other,
         priority: EventPriority = .medium,
         status: EventStatus = .pending,
@@ -140,7 +114,7 @@ extension Event {
 
     /// Returns a new event ready to be persisted as a duplicate.
     ///
-    /// Copies content fields and assigns a fresh identity and timestamps.
+    /// Copies content fields (including ``repeatRule``) and assigns a fresh identity.
     /// - Parameter date: Optional date override for the duplicate. Defaults to the source date.
     /// - Returns: Independent event copy suitable for ``EventPersistenceService/create(_:)``.
     func duplicated(on date: Date? = nil) -> Event {

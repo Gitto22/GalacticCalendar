@@ -8,6 +8,8 @@ import Foundation
 /// Contract for creating, reading, updating, and deleting events.
 ///
 /// Implementations (SwiftData, CloudKit, in-memory) live outside Domain.
+/// This protocol is imperative; the reactive catalog for UI lives in
+/// ``EventPersistenceService``.
 protocol EventRepositoryProtocol: AnyObject {
 
     // MARK: - Create
@@ -36,6 +38,11 @@ protocol EventRepositoryProtocol: AnyObject {
     /// Returns events in `interval` grouped by start-of-day.
     /// - Parameter interval: Date interval to query.
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]]
+
+    /// Returns events whose ``RepeatRule`` is recurring.
+    ///
+    /// Does **not** expand occurrences — only filters stored rules.
+    func fetchRecurring() async throws -> [Event]
 
     // MARK: - Update
 

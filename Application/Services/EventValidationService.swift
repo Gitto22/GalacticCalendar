@@ -24,6 +24,12 @@ enum EventValidationIssue: Equatable, Sendable {
 
     /// Reminder date is invalid relative to the event date.
     case invalidReminder
+
+    /// Recurrence interval is invalid (must be ≥ 1).
+    case invalidRepeatInterval
+
+    /// Recurrence end date is invalid relative to the event date.
+    case invalidRepeatEndDate
 }
 
 /// Validates Galactic Calendar events before persistence or presentation.
@@ -64,6 +70,7 @@ struct EventValidationService: Sendable {
         issues.append(contentsOf: validateTitle(event.title))
         issues.append(contentsOf: validateDescription(event.description))
         issues.append(contentsOf: validateDates(eventDate: event.date, reminder: event.reminder))
+        issues.append(contentsOf: validateRepeatRule(event.repeatRule, eventDate: event.date))
 
         return issues
     }
@@ -116,6 +123,24 @@ struct EventValidationService: Sendable {
 
             if reminderIsFinite == false || reminderIsAfterEvent {
                 issues.append(.invalidReminder)
+            }
+        }
+
+        return issues
+    }
+
+    /// Validates a recurrence rule without expanding occurrences.
+    private func validateRepeatRule(_ rule: RepeatRule, eventDate: Date) -> [EventValidationIssue] {
+        var issues: [EventValidationIssue] = []
+
+        if rule.interval < 1 {
+            issues.append(.invalidRepeatInterval)
+        }
+
+        if let endDate = rule.endDate {
+            let endIsFinite = endDate.timeIntervalSinceReferenceDate.isFinite
+            if endIsFinite == false || endDate < eventDate {
+                issues.append(.invalidRepeatEndDate)
             }
         }
 

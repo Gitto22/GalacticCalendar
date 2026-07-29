@@ -29,7 +29,7 @@ final class HomeViewModel {
     /// ViewModel driving the day-events screen, if any.
     private(set) var dayEventsViewModel: DayEventsViewModel?
 
-    /// `true` while the event editor modal is presented from Home (empty day).
+    /// `true` while the event editor modal is presented from Home.
     var isPresentingEventEditor: Bool = false
 
     /// ViewModel driving the Home-presented event editor, if any.
@@ -45,10 +45,11 @@ final class HomeViewModel {
 
     // MARK: - Intents
 
-    /// Selects an in-month day and routes to day events or the create editor.
+    /// Selects an in-month day and routes by event count.
     ///
-    /// - If the day already has events → presents ``DayEventsView``.
-    /// - If the day has no events → presents ``EventEditorView`` for creation.
+    /// - 0 events → ``EventEditorView`` (create)
+    /// - 1 event → ``EventEditorView`` (edit that event)
+    /// - 2+ events → ``DayEventsView``
     /// - Parameter day: Calendar day tapped by the user.
     func selectDay(_ day: CalendarDay) async {
         guard day.isCurrentMonth else {
@@ -57,16 +58,14 @@ final class HomeViewModel {
 
         selectedDate = day.date
 
-        let existingEvents: [Event]
-        do {
-            existingEvents = try await eventPersistenceService.fetch(on: day.date)
-        } catch {
-            existingEvents = []
-        }
+        let existingEvents = eventPersistenceService.events(on: day.date)
 
-        if existingEvents.isEmpty {
+        switch existingEvents.count {
+        case 0:
             presentEventEditorForCreation(on: day.date)
-        } else {
+        case 1:
+            presentEventEditorForEditing(existingEvents[0])
+        default:
             presentDayEvents(on: day.date)
         }
     }
@@ -78,6 +77,8 @@ final class HomeViewModel {
     }
 
     /// Dismisses the Home-presented event editor.
+    ///
+    /// Calendar indicators refresh via the reactive ``EventPersistenceService`` catalog.
     func dismissEventEditor() {
         isPresentingEventEditor = false
         eventEditorViewModel = nil
@@ -94,13 +95,24 @@ final class HomeViewModel {
         isPresentingDayEvents = true
     }
 
-    /// Presents the event editor in create mode for an empty day.
+    /// Presents the event editor in create mode.
     private func presentEventEditorForCreation(on date: Date) {
         let editor = EventEditorViewModel(
             persistenceService: eventPersistenceService,
             initialDate: date
         )
         editor.prepareForCreation(on: date)
+        eventEditorViewModel = editor
+        isPresentingEventEditor = true
+    }
+
+    /// Presents the event editor in edit mode for a single existing event.
+    private func presentEventEditorForEditing(_ event: Event) {
+        let editor = EventEditorViewModel(
+            persistenceService: eventPersistenceService,
+            initialDate: event.date,
+            event: event
+        )
         eventEditorViewModel = editor
         isPresentingEventEditor = true
     }

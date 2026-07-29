@@ -24,9 +24,23 @@ final class ViewModelFactory {
 
     // MARK: - Home
 
-    /// Builds a ``HomeViewModel`` wired to event persistence.
+    /// Builds a ``HomeViewModel`` wired to the reactive event catalog.
     func makeHomeViewModel() -> HomeViewModel {
         HomeViewModel(eventPersistenceService: container.eventPersistenceService)
+    }
+
+    // MARK: - Calendar
+
+    /// Builds a ``CalendarGridViewModel`` bound to the reactive event catalog.
+    /// - Parameter engine: Optional calendar engine override.
+    /// - Returns: Configured grid ViewModel.
+    func makeCalendarGridViewModel(
+        engine: CalendarEngine = CalendarEngine()
+    ) -> CalendarGridViewModel {
+        CalendarGridViewModel(
+            persistenceService: container.eventPersistenceService,
+            engine: engine
+        )
     }
 
     // MARK: - Events

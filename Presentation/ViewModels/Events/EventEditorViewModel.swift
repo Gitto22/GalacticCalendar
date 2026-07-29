@@ -32,6 +32,10 @@ enum EventEditorMode: Equatable, Sendable {
 /// ## Architecture
 /// Lives in the Presentation layer (MVVM) and depends only on Application services,
 /// preserving Clean Architecture boundaries.
+///
+/// Mutations go through ``EventPersistenceService``, which refreshes its reactive
+/// ``EventPersistenceService/events`` catalog (single source of truth).
+/// ``CalendarGridViewModel`` and ``DayEventsViewModel`` derive UI state from that catalog.
 @MainActor
 @Observable
 final class EventEditorViewModel {
@@ -70,7 +74,9 @@ final class EventEditorViewModel {
     private(set) var reminder: Date?
 
     /// Recurrence rule applied to the event.
-    var repeatRule: EventRepeatRule = .none
+    ///
+    /// Bound to the approved editor presets via ``RepeatRule/editorSelectableRules``.
+    var repeatRule: RepeatRule = .none
 
     /// Selected event category.
     var category: EventCategory = .work

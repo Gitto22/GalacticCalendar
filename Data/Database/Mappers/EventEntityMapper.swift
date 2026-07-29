@@ -20,7 +20,7 @@ enum EventEntityMapper {
             eventDescription: event.description,
             date: event.date,
             reminder: event.reminder,
-            repeatRuleRawValue: event.repeatRule.rawValue,
+            repeatRuleRawValue: event.repeatRule.encodeForPersistence(),
             categoryRawValue: event.category.rawValue,
             priorityRawValue: event.priority.rawValue,
             statusRawValue: event.status.rawValue,
@@ -39,7 +39,7 @@ enum EventEntityMapper {
         entity.eventDescription = event.description
         entity.date = event.date
         entity.reminder = event.reminder
-        entity.repeatRuleRawValue = event.repeatRule.rawValue
+        entity.repeatRuleRawValue = event.repeatRule.encodeForPersistence()
         entity.categoryRawValue = event.category.rawValue
         entity.priorityRawValue = event.priority.rawValue
         entity.statusRawValue = event.status.rawValue
@@ -59,7 +59,7 @@ enum EventEntityMapper {
             description: entity.eventDescription,
             date: entity.date,
             reminder: entity.reminder,
-            repeatRule: EventRepeatRule(rawValue: entity.repeatRuleRawValue) ?? .none,
+            repeatRule: RepeatRule.decodeFromPersistence(entity.repeatRuleRawValue),
             category: EventCategory(rawValue: entity.categoryRawValue) ?? .other,
             priority: EventPriority(rawValue: entity.priorityRawValue) ?? .medium,
             status: EventStatus(rawValue: entity.statusRawValue) ?? .pending,

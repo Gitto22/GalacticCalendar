@@ -44,6 +44,10 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
 /// Shows the day number with:
 /// current-month, previous-month, next-month, today, selected,
 /// and event-indicator states.
+///
+/// Event indicators are purely presentational: the parent ``CalendarGridView``
+/// supplies an annotated ``CalendarDay`` after each ``EventPersistenceService``
+/// revision bump. This cell does not fetch or observe persistence itself.
 struct CalendarDayCell: View {
 
     // MARK: - Environment

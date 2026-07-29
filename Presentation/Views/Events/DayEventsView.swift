@@ -7,14 +7,9 @@ import SwiftUI
 
 /// Day events list screen for Galactic Calendar.
 ///
-/// Shows every event for a selected day, ordered by time, with a
-/// bottom action to create a new event via ``EventEditorView``.
+/// Shows every event for a selected day, ordered by time.
+/// Tap edits, swipe-left deletes, long-press opens the contextual menu.
 struct DayEventsView: View {
-
-    // MARK: - Environment
-
-    /// Persistence service whose revision triggers automatic list refresh.
-    @Environment(EventPersistenceService.self) private var eventPersistenceService
 
     // MARK: - Properties
 
@@ -49,9 +44,6 @@ struct DayEventsView: View {
             .padding(.horizontal, Spacing.pageHorizontal)
             .padding(.top, Spacing.md)
             .padding(.bottom, Spacing.pageVertical)
-        }
-        .task(id: eventPersistenceService.eventsRevision) {
-            await viewModel.loadEvents()
         }
         .fullScreenCover(
             isPresented: $viewModel.isPresentingEventEditor,
@@ -96,26 +88,45 @@ struct DayEventsView: View {
 
     // MARK: - List
 
-    /// Scrollable event rows for the selected day.
+    /// Scrollable event rows with swipe-to-delete.
     private var eventsList: some View {
-        ScrollView {
-            LazyVStack(spacing: Spacing.sm) {
-                ForEach(viewModel.events) { event in
-                    EventRow(
-                        event: event,
-                        onTap: { viewModel.presentEdit(for: event) },
-                        onEdit: { viewModel.presentEdit(for: event) },
-                        onDuplicate: {
-                            Task { await viewModel.duplicate(event) }
-                        },
-                        onDelete: {
-                            Task { await viewModel.delete(event) }
-                        }
+        List {
+            ForEach(viewModel.events) { event in
+                EventRow(
+                    event: event,
+                    onTap: { viewModel.presentEdit(for: event) },
+                    onEdit: { viewModel.presentEdit(for: event) },
+                    onDuplicate: {
+                        Task { await viewModel.duplicate(event) }
+                    },
+                    onDelete: {
+                        Task { await viewModel.delete(event) }
+                    }
+                )
+                .listRowInsets(
+                    EdgeInsets(
+                        top: Spacing.xxs,
+                        leading: Spacing.sm,
+                        bottom: Spacing.xxs,
+                        trailing: Spacing.sm
                     )
+                )
+                .listRowBackground(Color.clear)
+                .listRowSeparator(.hidden)
+                .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                    Button(role: .destructive) {
+                        Task { await viewModel.delete(event) }
+                    } label: {
+                        Label(
+                            String(localized: "day_events_action_delete"),
+                            systemImage: Icons.Events.delete
+                        )
+                    }
                 }
             }
-            .padding(Spacing.sm)
         }
+        .listStyle(.plain)
+        .scrollContentBackground(.hidden)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
         .glassEffect(.subtle, cornerRadius: Spacing.Radius.xl)
     }
@@ -217,6 +228,8 @@ private final class PreviewDayEventsRepository: EventRepositoryProtocol {
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
+
+    func fetchRecurring() async throws -> [Event] { [] }
 
     func update(_ event: Event) async throws {}
 

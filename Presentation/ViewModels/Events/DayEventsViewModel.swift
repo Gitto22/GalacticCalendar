@@ -7,27 +7,26 @@ import Foundation
 
 /// ViewModel for the day events list screen.
 ///
-/// Loads, duplicates, and deletes events for a single calendar day.
-/// Create and edit flows are delegated to ``EventEditorViewModel``.
+/// ## Responsibilities
+/// - Expose the day's events from ``EventPersistenceService`` (SSOT).
+/// - Open create/edit flows via ``EventEditorViewModel``.
+/// - Duplicate / delete through the persistence façade.
+///
+/// ## Sync
+/// ``events`` is derived from the reactive catalog; no manual reload token is required.
 @MainActor
 @Observable
 final class DayEventsViewModel {
 
     // MARK: - Dependencies
 
-    /// Persistence façade for event reads and mutations.
+    /// Reactive event catalog (single source of truth).
     private let persistenceService: EventPersistenceService
 
     // MARK: - State
 
     /// Calendar day whose events are listed.
     private(set) var date: Date
-
-    /// Events for ``date``, sorted ascending by time.
-    private(set) var events: [Event] = []
-
-    /// `true` while a fetch or mutation is running.
-    private(set) var isLoading: Bool = false
 
     /// Last persistence failure mapped for presentation.
     private(set) var lastError: EventPersistenceError?
@@ -43,30 +42,20 @@ final class DayEventsViewModel {
     /// Creates a day-events ViewModel.
     /// - Parameters:
     ///   - date: Day to list.
-    ///   - persistenceService: Event persistence entry point.
+    ///   - persistenceService: Reactive event catalog.
     init(date: Date, persistenceService: EventPersistenceService) {
         self.date = date
         self.persistenceService = persistenceService
     }
 
-    // MARK: - Loading
+    // MARK: - Derived Events
 
-    /// Reloads events for ``date`` ordered by hour.
-    func loadEvents() async {
-        isLoading = true
-        lastError = nil
-        defer { isLoading = false }
-
-        do {
-            let fetched = try await persistenceService.fetch(on: date)
-            events = fetched.sorted { $0.date < $1.date }
-        } catch let error as EventPersistenceError {
-            lastError = error
-            events = []
-        } catch {
-            lastError = .unknown
-            events = []
-        }
+    /// Events for ``date`` from the reactive catalog, sorted by time.
+    ///
+    /// Access tracks ``EventPersistenceService/events`` so the list updates automatically.
+    var events: [Event] {
+        _ = persistenceService.eventsRevision
+        return persistenceService.events(on: date)
     }
 
     // MARK: - Editor
@@ -87,47 +76,26 @@ final class DayEventsViewModel {
     func presentEdit(for event: Event) {
         let editor = EventEditorViewModel(
             persistenceService: persistenceService,
-            initialDate: event.date
+            initialDate: event.date,
+            event: event
         )
-        editor.prepareForEditing(event)
         eventEditorViewModel = editor
         isPresentingEventEditor = true
     }
 
-    /// Dismisses the nested event editor and reloads the list when needed.
+    /// Dismisses the nested event editor.
     func dismissEventEditor() {
-        let shouldReload = eventEditorViewModel?.didCompleteMutation == true
         isPresentingEventEditor = false
         eventEditorViewModel = nil
-
-        if shouldReload {
-            Task { await loadEvents() }
-        }
     }
 
     // MARK: - Mutations
 
-    /// Duplicates an event as a new persisted copy on the same day.
+    /// Duplicates an event via the reactive persistence façade.
     /// - Parameter event: Source event.
     func duplicate(_ event: Event) async {
-        let copy = Event(
-            id: UUID(),
-            title: event.title,
-            description: event.description,
-            date: event.date,
-            reminder: event.reminder,
-            repeatRule: event.repeatRule,
-            category: event.category,
-            priority: event.priority,
-            status: event.status,
-            color: event.color,
-            createdAt: Date(),
-            updatedAt: Date()
-        )
-
         do {
-            try await persistenceService.create(copy)
-            await loadEvents()
+            try await persistenceService.duplicate(event)
         } catch let error as EventPersistenceError {
             lastError = error
         } catch {
@@ -135,12 +103,11 @@ final class DayEventsViewModel {
         }
     }
 
-    /// Deletes an event from persistence and refreshes the list.
+    /// Deletes an event via the reactive persistence façade.
     /// - Parameter event: Event to delete.
     func delete(_ event: Event) async {
         do {
             try await persistenceService.delete(event)
-            await loadEvents()
         } catch let error as EventPersistenceError {
             lastError = error
         } catch {

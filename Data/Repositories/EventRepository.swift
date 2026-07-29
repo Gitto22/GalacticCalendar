@@ -18,9 +18,15 @@ enum EventRepositoryError: Error, Equatable, Sendable {
     case saveFailed
 }
 
-/// SwiftData-backed repository for ``Event``.
+/// SwiftData-backed imperative repository for ``Event``.
 ///
+/// ## Role
 /// Translates between Domain ``Event`` and ``EventEntity``.
+/// This type is **not** the UI source of truth — ``EventPersistenceService``
+/// owns the reactive in-memory catalog observed by ViewModels.
+///
+/// ## CloudKit
+/// Keep enum fields as raw strings so the same entities remain sync-friendly.
 @MainActor
 final class EventRepository: EventRepositoryProtocol {
 
@@ -98,6 +104,15 @@ final class EventRepository: EventRepositoryProtocol {
         return Dictionary(grouping: events) { event in
             calendar.startOfDay(for: event.date)
         }
+    }
+
+    /// Returns events with a recurring ``RepeatRule``.
+    ///
+    /// Filters in domain space after fetch so both plain frequency strings and
+    /// versioned JSON envelopes are handled uniformly. Occurrences are not expanded.
+    func fetchRecurring() async throws -> [Event] {
+        let all = try await fetchAll()
+        return all.filter(\.repeatRule.isRecurring)
     }
 
     // MARK: - Update
