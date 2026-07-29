@@ -1,0 +1,128 @@
+//
+//  ColorPalette.swift
+//  GalacticCalendar
+//
+
+import SwiftUI
+
+#if canImport(UIKit)
+import UIKit
+#elseif canImport(AppKit)
+import AppKit
+#endif
+
+/// Semantic color tokens for Galactic Calendar.
+///
+/// Views must consume colors exclusively through this palette.
+enum ColorPalette {
+
+    // MARK: - Core
+
+    /// Primary brand color used for key interactive emphasis.
+    static let primary = Color.adaptive(
+        light: Color(red: 0.23, green: 0.42, blue: 0.85),
+        dark: Color(red: 0.42, green: 0.61, blue: 1.00)
+    )
+
+    /// Secondary brand color used for supporting emphasis.
+    static let secondary = Color.adaptive(
+        light: Color(red: 0.39, green: 0.49, blue: 0.64),
+        dark: Color(red: 0.62, green: 0.71, blue: 0.84)
+    )
+
+    /// Base application background.
+    static let background = Color.adaptive(
+        light: Color(red: 0.95, green: 0.96, blue: 0.98),
+        dark: Color(red: 0.04, green: 0.06, blue: 0.13)
+    )
+
+    /// Elevated surface color for panels and cards.
+    static let surface = Color.adaptive(
+        light: Color(red: 1.00, green: 1.00, blue: 1.00),
+        dark: Color(red: 0.08, green: 0.11, blue: 0.18)
+    )
+
+    /// Accent color for highlights and focal calls to action.
+    static let accent = Color.adaptive(
+        light: Color(red: 0.10, green: 0.64, blue: 0.72),
+        dark: Color(red: 0.37, green: 0.92, blue: 0.83)
+    )
+
+    // MARK: - Feedback
+
+    /// Success state color.
+    static let success = Color.adaptive(
+        light: Color(red: 0.20, green: 0.66, blue: 0.33),
+        dark: Color(red: 0.30, green: 0.85, blue: 0.45)
+    )
+
+    /// Warning state color.
+    static let warning = Color.adaptive(
+        light: Color(red: 0.90, green: 0.60, blue: 0.05),
+        dark: Color(red: 1.00, green: 0.72, blue: 0.20)
+    )
+
+    /// Danger state color.
+    static let danger = Color.adaptive(
+        light: Color(red: 0.86, green: 0.20, blue: 0.22),
+        dark: Color(red: 1.00, green: 0.35, blue: 0.35)
+    )
+
+    // MARK: - Content
+
+    /// Primary readable text color.
+    static let textPrimary = Color.adaptive(
+        light: Color(red: 0.08, green: 0.10, blue: 0.16),
+        dark: Color(red: 0.96, green: 0.97, blue: 0.99)
+    )
+
+    /// Secondary readable text color.
+    static let textSecondary = Color.adaptive(
+        light: Color(red: 0.35, green: 0.40, blue: 0.48),
+        dark: Color(red: 0.70, green: 0.75, blue: 0.84)
+    )
+
+    /// Tertiary readable text color.
+    static let textTertiary = Color.adaptive(
+        light: Color(red: 0.55, green: 0.59, blue: 0.66),
+        dark: Color(red: 0.52, green: 0.57, blue: 0.66)
+    )
+
+    /// Subtle separator color.
+    static let separator = Color.adaptive(
+        light: Color(red: 0.85, green: 0.87, blue: 0.91),
+        dark: Color(red: 0.20, green: 0.24, blue: 0.33)
+    )
+
+    /// Overlay scrim used above imagery when readability must be preserved.
+    static let overlay = Color.black.opacity(0.28)
+}
+
+// MARK: - Adaptive Color Support
+
+private extension Color {
+
+    /// Creates a color that adapts to light and dark appearances.
+    /// - Parameters:
+    ///   - light: Color used in light appearance.
+    ///   - dark: Color used in dark appearance.
+    /// - Returns: Adaptive ``Color``.
+    static func adaptive(light: Color, dark: Color) -> Color {
+        #if canImport(UIKit)
+        Color(
+            uiColor: UIColor { traits in
+                traits.userInterfaceStyle == .dark ? UIColor(dark) : UIColor(light)
+            }
+        )
+        #elseif canImport(AppKit)
+        Color(
+            nsColor: NSColor(name: nil) { appearance in
+                let isDark = appearance.bestMatch(from: [.darkAqua, .aqua]) == .darkAqua
+                return NSColor(isDark ? dark : light)
+            }
+        )
+        #else
+        light
+        #endif
+    }
+}

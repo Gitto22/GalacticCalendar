@@ -5,7 +5,7 @@ Clean Architecture + MVVM for iPhone, iPad, and macOS.
 ## Layers
 
 - **App / Config** — Composition Root, environment, feature flags, constants
-- **Application** — Application managers (e.g. ThemeManager)
+- **Application** — Design System (ThemeManager, tokens) and application services
 - **Presentation** — Views, ViewModels, Components (including Home)
 - **Domain** — Models, UseCases, Protocols
 - **Data** — Repositories, Database (SwiftData), Services
