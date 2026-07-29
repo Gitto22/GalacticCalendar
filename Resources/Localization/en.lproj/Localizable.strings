@@ -1,1 +1,5 @@
-﻿/* English localization scaffold for Galactic Calendar */
+﻿/* English localization for Galactic Calendar */
+
+"universe_message_body" = "The best time to start is today.";
+"universe_message_caption" = "Message from the Universe";
+"universe_message_inspiration" = "Inspiration";

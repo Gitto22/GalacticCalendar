@@ -39,6 +39,17 @@ enum Spacing {
     /// 64 pt spacing.
     static let xxxl: CGFloat = 64
 
+    // MARK: - Controls
+
+    /// Diameter for circular Home header controls.
+    static let headerControlSize: CGFloat = xxl
+
+    /// Stroke width for glowing circular Home controls.
+    static let headerControlStroke: CGFloat = 1.5
+
+    /// Stroke width for glowing Home cards.
+    static let cardStroke: CGFloat = 1.5
+
     // MARK: - Layout
 
     /// Standard horizontal page inset.

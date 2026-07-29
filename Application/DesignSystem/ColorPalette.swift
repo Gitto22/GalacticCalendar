@@ -96,6 +96,46 @@ enum ColorPalette {
 
     /// Overlay scrim used above imagery when readability must be preserved.
     static let overlay = Color.black.opacity(0.28)
+
+    // MARK: - On Image (Home)
+
+    /// Primary text and icon color drawn over monthly backgrounds.
+    static let onImagePrimary = Color.white
+
+    /// Accent text color for year and month-change affordances over imagery.
+    static let onImageAccent = Color(red: 0.45, green: 0.78, blue: 1.00)
+
+    /// Leading glow color used by circular Home controls.
+    static let glowStart = Color(red: 0.35, green: 0.75, blue: 1.00)
+
+    /// Trailing glow color used by circular Home controls.
+    static let glowEnd = Color(red: 0.62, green: 0.42, blue: 1.00)
+
+    /// Translucent fill used inside circular Home controls.
+    static let controlFill = Color.black.opacity(0.28)
+
+    /// Translucent fill used by Home cards over monthly backgrounds.
+    static let cardFill = Color.black.opacity(0.42)
+
+    /// Purple accent used by Universe Message quotes and captions.
+    static let universeAccent = Color(red: 0.72, green: 0.48, blue: 1.00)
+
+    // MARK: - Glass Opacities
+
+    /// Opacity used by subtle glass separator strokes.
+    static let glassStrokeSubtleOpacity = 0.35
+
+    /// Opacity used by regular glass separator strokes.
+    static let glassStrokeRegularOpacity = 0.45
+
+    /// Opacity used by prominent glass separator strokes.
+    static let glassStrokeProminentOpacity = 0.55
+
+    /// Opacity used by circular control glow shadows.
+    static let glowControlShadowOpacity = 0.55
+
+    /// Opacity used by card glow shadows.
+    static let glowCardShadowOpacity = 0.45
 }
 
 // MARK: - Adaptive Color Support

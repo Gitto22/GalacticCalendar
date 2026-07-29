@@ -110,6 +110,11 @@ final class ThemeManager {
     /// When `nil`, the manager uses the device's current month.
     var displayedMonthOverride: Int?
 
+    /// Optional year override paired with ``displayedMonthOverride``.
+    ///
+    /// When `nil`, the manager uses the device's current year.
+    var displayedYearOverride: Int?
+
     /// Indicates whether additional theme packs may be activated.
     private let allowsAdditionalThemes: Bool
 
@@ -118,6 +123,12 @@ final class ThemeManager {
 
     /// Bundled theme packs currently available to the application.
     private let bundledThemePacks: [any ThemePack]
+
+    /// Formatter used to produce localized month names.
+    private let monthNameFormatter: DateFormatter
+
+    /// Formatter used to produce localized year text.
+    private let yearFormatter: DateFormatter
 
     // MARK: - Lifecycle
 
@@ -138,6 +149,18 @@ final class ThemeManager {
         self.calendar = calendar
         self.bundledThemePacks = bundledThemePacks
         self.activeThemePackID = GalacticDefaultThemePack.shared.id
+
+        let monthFormatter = DateFormatter()
+        monthFormatter.calendar = calendar
+        monthFormatter.locale = .autoupdatingCurrent
+        monthFormatter.setLocalizedDateFormatFromTemplate("MMMM")
+        self.monthNameFormatter = monthFormatter
+
+        let yearFormatter = DateFormatter()
+        yearFormatter.calendar = calendar
+        yearFormatter.locale = .autoupdatingCurrent
+        yearFormatter.setLocalizedDateFormatFromTemplate("y")
+        self.yearFormatter = yearFormatter
     }
 
     // MARK: - Month Detection
@@ -147,12 +170,17 @@ final class ThemeManager {
         Calendar.current.component(.month, from: Date())
     }
 
+    /// Returns the device's current calendar year.
+    func currentYear() -> Int {
+        Calendar.current.component(.year, from: Date())
+    }
+
     /// Current calendar month number in the range `1...12`.
     var currentMonthNumber: Int {
         currentMonth()
     }
 
-    /// Month number currently driving the Home background.
+    /// Month number currently driving the Home background and header.
     var activeMonthNumber: Int {
         if let displayedMonthOverride,
            MonthBackgroundAsset.asset(for: displayedMonthOverride) != nil {
@@ -162,9 +190,78 @@ final class ThemeManager {
         return currentMonth()
     }
 
+    /// Year currently driving the Home header.
+    var activeYear: Int {
+        displayedYearOverride ?? currentYear()
+    }
+
+    /// Localized display name for the active month.
+    func displayedMonthName() -> String {
+        localizedMonthName(for: activeMonthNumber, year: activeYear)
+    }
+
+    /// Localized display text for the active year.
+    func displayedYearText() -> String {
+        localizedYearText(for: activeYear)
+    }
+
+    /// Prepares a visible month/year for future month navigation.
+    ///
+    /// Does not perform navigation by itself; call sites will use this
+    /// when month changing is implemented.
+    /// - Parameters:
+    ///   - month: Month number in `1...12`.
+    ///   - year: Year value associated with the month.
+    func prepareDisplayedMonth(_ month: Int, year: Int) {
+        guard MonthBackgroundAsset.asset(for: month) != nil else {
+            return
+        }
+
+        displayedMonthOverride = month
+        displayedYearOverride = year
+    }
+
     /// Active monthly background asset.
     var activeMonthBackground: MonthBackgroundAsset {
         MonthBackgroundAsset.asset(for: activeMonthNumber) ?? .january
+    }
+
+    // MARK: - Localization Helpers
+
+    /// Returns a localized month name for the provided month and year.
+    /// - Parameters:
+    ///   - month: Month number in `1...12`.
+    ///   - year: Year used to build a valid date.
+    /// - Returns: Localized month name, or an empty string when invalid.
+    private func localizedMonthName(for month: Int, year: Int) -> String {
+        var components = DateComponents()
+        components.calendar = calendar
+        components.year = year
+        components.month = month
+        components.day = 1
+
+        guard let date = calendar.date(from: components) else {
+            return ""
+        }
+
+        return monthNameFormatter.string(from: date)
+    }
+
+    /// Returns localized year text for the provided year.
+    /// - Parameter year: Year value to format.
+    /// - Returns: Localized year text, or an empty string when invalid.
+    private func localizedYearText(for year: Int) -> String {
+        var components = DateComponents()
+        components.calendar = calendar
+        components.year = year
+        components.month = 1
+        components.day = 1
+
+        guard let date = calendar.date(from: components) else {
+            return ""
+        }
+
+        return yearFormatter.string(from: date)
     }
 
     // MARK: - Backgrounds

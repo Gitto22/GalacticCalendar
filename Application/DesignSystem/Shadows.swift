@@ -46,22 +46,36 @@ enum Shadows {
     /// Soft elevation for subtle separation.
     static let soft = ShadowStyle(
         color: Color.black.opacity(0.12),
-        radius: 8,
-        y: 4
+        radius: Spacing.xs,
+        y: Spacing.xxs
     )
 
     /// Medium elevation for cards and panels.
     static let medium = ShadowStyle(
         color: Color.black.opacity(0.18),
-        radius: 16,
-        y: 8
+        radius: Spacing.md,
+        y: Spacing.xs
     )
 
     /// Strong elevation for floating controls.
     static let elevated = ShadowStyle(
         color: Color.black.opacity(0.28),
-        radius: 24,
-        y: 12
+        radius: Spacing.lg,
+        y: Spacing.sm
+    )
+
+    /// Glow shadow for circular Home controls.
+    static let glowControl = ShadowStyle(
+        color: ColorPalette.glowStart.opacity(ColorPalette.glowControlShadowOpacity),
+        radius: Spacing.xs,
+        y: 0
+    )
+
+    /// Glow shadow for Galactic glass cards.
+    static let glowCard = ShadowStyle(
+        color: ColorPalette.glowEnd.opacity(ColorPalette.glowCardShadowOpacity),
+        radius: Spacing.xs,
+        y: 0
     )
 }
 

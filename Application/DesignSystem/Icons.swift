@@ -44,6 +44,12 @@ enum Icons {
 
         /// Next period.
         static let next = "chevron.right"
+
+        /// Affordance reserved for changing the visible month.
+        static let changeMonth = "chevron.down"
+
+        /// Decorative star paired with the Home calendar control.
+        static let star = "sparkle"
     }
 
     // MARK: - Events
@@ -77,6 +83,12 @@ enum Icons {
 
         /// Universe message affordance.
         static let universeMessage = "sparkles"
+
+        /// Opening quotation mark for Universe Messages.
+        static let quote = "quote.opening"
+
+        /// Inspiration badge glyph.
+        static let inspiration = "sparkles"
     }
 
     // MARK: - Status

@@ -7,8 +7,8 @@ import SwiftUI
 
 /// Root presentation container hosted by the application scene.
 ///
-/// Currently visualizes the monthly background only.
-/// Calendar, events, and header remain deferred.
+/// Renders the approved Home top section:
+/// monthly background, ``HomeHeaderView``, and ``UniverseMessageCard``.
 struct RootView: View {
 
     // MARK: - Environment
@@ -23,12 +23,33 @@ struct RootView: View {
 
     var body: some View {
         NavigationStack(path: Bindable(navigationManager).path) {
-            MonthBackgroundView()
+            homeTopSection
                 .navigationDestination(for: Route.self) { route in
                     destination(for: route)
                 }
+                #if os(iOS)
+                .toolbar(.hidden, for: .navigationBar)
+                #endif
         }
         .preferredColorScheme(themeManager.preferredColorScheme)
+    }
+
+    // MARK: - Home Top Section
+
+    /// Approved upper Home composition.
+    private var homeTopSection: some View {
+        ZStack(alignment: .top) {
+            MonthBackgroundView()
+
+            VStack(spacing: Spacing.sm) {
+                HomeHeaderView()
+
+                UniverseMessageCard()
+                    .padding(.horizontal, Spacing.pageHorizontal)
+
+                Spacer(minLength: 0)
+            }
+        }
     }
 
     // MARK: - Destinations
@@ -40,7 +61,7 @@ struct RootView: View {
     private func destination(for route: Route) -> some View {
         switch route {
         case .root:
-            MonthBackgroundView()
+            homeTopSection
         }
     }
 }

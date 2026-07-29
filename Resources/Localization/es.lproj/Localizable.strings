@@ -1,1 +1,5 @@
-﻿/* Spanish localization scaffold for Galactic Calendar */
+﻿/* Spanish localization for Galactic Calendar */
+
+"universe_message_body" = "El mejor momento para empezar es hoy.";
+"universe_message_caption" = "Mensaje del Universo";
+"universe_message_inspiration" = "Inspiración";

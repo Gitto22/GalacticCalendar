@@ -35,8 +35,7 @@ struct MonthBackgroundView: View {
 
     /// Asset name for the device's current month.
     private var resolvedAssetName: String {
-        let month = themeManager.currentMonth()
-        return themeManager.backgroundAssetName(for: month)
+        themeManager.backgroundAssetName(for: themeManager.activeMonthNumber)
     }
 }
 
