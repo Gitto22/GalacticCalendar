@@ -4,10 +4,9 @@
 //
 
 import Foundation
+import SwiftData
 
-/// Composition Root that wires infrastructure dependencies for the app shell.
-///
-/// Feature modules are intentionally not constructed here yet.
+/// Composition Root that wires infrastructure and persistence dependencies.
 @MainActor
 @Observable
 final class DependencyContainer {
@@ -30,9 +29,17 @@ final class DependencyContainer {
     /// Theme manager for system appearance preferences.
     let themeManager: ThemeManager
 
+    // MARK: - Persistence
+
+    /// SwiftData model container for local storage (CloudKit-ready configuration).
+    let modelContainer: ModelContainer
+
+    /// Event persistence entry point for ViewModels.
+    let eventPersistenceService: EventPersistenceService
+
     // MARK: - Lifecycle
 
-    /// Builds the infrastructure graph required to launch the application shell.
+    /// Builds the infrastructure graph required to launch the application.
     init() {
         let configuration = AppConfiguration()
         self.appConfiguration = configuration
@@ -44,5 +51,21 @@ final class DependencyContainer {
         self.themeManager = ThemeManager(
             allowsAdditionalThemes: configuration.isEnabled(.additionalThemes)
         )
+
+        do {
+            let container = try ModelContainerFactory.make(
+                enableCloudKit: configuration.isEnabled(.cloudKitSync)
+            )
+            self.modelContainer = container
+
+            let repository = EventRepository(modelContext: container.mainContext)
+            self.eventPersistenceService = EventPersistenceService(repository: repository)
+        } catch {
+            // Fallback to in-memory store so the app can still launch if disk setup fails.
+            let fallback = try! ModelContainerFactory.make(inMemory: true, enableCloudKit: false)
+            self.modelContainer = fallback
+            let repository = EventRepository(modelContext: fallback.mainContext)
+            self.eventPersistenceService = EventPersistenceService(repository: repository)
+        }
     }
 }

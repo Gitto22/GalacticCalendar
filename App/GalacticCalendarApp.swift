@@ -4,6 +4,7 @@
 //
 
 import SwiftUI
+import SwiftData
 
 /// Application entry point for Galactic Calendar across iPhone, iPad, and macOS.
 @main
@@ -24,6 +25,8 @@ struct GalacticCalendarApp: App {
                 .environment(container.navigationManager)
                 .environment(container.appRouter)
                 .environment(container.themeManager)
+                .environment(container.eventPersistenceService)
+                .modelContainer(container.modelContainer)
         }
     }
 }
