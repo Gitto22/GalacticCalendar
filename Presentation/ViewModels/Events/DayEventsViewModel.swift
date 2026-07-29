@@ -89,6 +89,19 @@ final class DayEventsViewModel {
         eventEditorViewModel = nil
     }
 
+    /// Clears ``lastError`` after the user dismisses an alert.
+    func clearLastError() {
+        lastError = nil
+    }
+
+    /// Localized message for ``lastError``, when present.
+    var errorAlertMessage: String? {
+        guard let lastError else {
+            return nil
+        }
+        return EventEditorDisplayNames.message(for: lastError)
+    }
+
     // MARK: - Mutations
 
     /// Duplicates an event via the reactive persistence façade.

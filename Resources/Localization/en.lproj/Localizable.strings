@@ -73,3 +73,26 @@
 "day_events_action_edit" = "Edit";
 "day_events_action_duplicate" = "Duplicate";
 "day_events_action_delete" = "Delete";
+
+"event_validation_title_required" = "Title is required.";
+"event_validation_title_too_long" = "Title cannot exceed %d characters.";
+"event_validation_description_too_long" = "Description cannot exceed %d characters.";
+"event_validation_invalid_date" = "The event date is not valid.";
+"event_validation_invalid_end_date" = "End time must be at or after the start.";
+"event_validation_invalid_timezone" = "The time zone is not valid.";
+"event_validation_invalid_reminder" = "The reminder is not valid relative to the event date.";
+"event_validation_invalid_repeat_interval" = "The repeat interval is not valid.";
+"event_validation_invalid_repeat_end_date" = "The repeat end date is not valid.";
+
+"event_error_alert_title" = "Action could not be completed";
+"event_error_alert_dismiss" = "OK";
+"event_error_not_found" = "The event could not be found.";
+"event_error_save_failed" = "The event could not be saved.";
+"event_error_reminder_unauthorized" = "Notification permission is required for reminders.";
+"event_error_reminder_scheduling_failed" = "The reminder could not be scheduled.";
+"event_error_reminder_fire_date_in_past" = "The reminder date is already in the past.";
+"event_error_catalog_load_failed" = "Events could not be loaded.";
+"event_error_store_unavailable" = "Local storage is unavailable. Changes may not persist.";
+"event_error_unknown" = "An unexpected error occurred.";
+
+"event_save_success" = "Event saved";

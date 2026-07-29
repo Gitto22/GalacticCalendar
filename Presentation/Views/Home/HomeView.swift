@@ -25,6 +25,9 @@ struct HomeView: View {
     /// Grid ViewModel reading the reactive event catalog.
     @State private var calendarGridViewModel: CalendarGridViewModel
 
+    /// Controls the catalog / launch failure alert.
+    @State private var isShowingErrorAlert: Bool = false
+
     // MARK: - Lifecycle
 
     /// Creates the Home screen.
@@ -65,6 +68,14 @@ struct HomeView: View {
         .accessibilityElement(children: .contain)
         .task {
             await viewModel.bootstrapCatalog()
+            if viewModel.lastError != nil {
+                isShowingErrorAlert = true
+            }
+        }
+        .onAppear {
+            if viewModel.lastError != nil {
+                isShowingErrorAlert = true
+            }
         }
         .fullScreenCover(
             isPresented: $viewModel.isPresentingDayEvents,
@@ -81,6 +92,19 @@ struct HomeView: View {
             }
         ) {
             eventEditorCover(viewModel: viewModel)
+        }
+        .onChange(of: viewModel.lastError) { _, error in
+            isShowingErrorAlert = error != nil
+        }
+        .alert(
+            String(localized: "event_error_alert_title"),
+            isPresented: $isShowingErrorAlert
+        ) {
+            Button(String(localized: "event_error_alert_dismiss"), role: .cancel) {
+                viewModel.clearLastError()
+            }
+        } message: {
+            Text(viewModel.errorAlertMessage ?? String(localized: "event_error_unknown"))
         }
     }
 

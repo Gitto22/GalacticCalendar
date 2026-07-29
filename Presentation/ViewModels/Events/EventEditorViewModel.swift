@@ -333,9 +333,38 @@ final class EventEditorViewModel {
         validationIssues.isEmpty == false
     }
 
+    /// Localized summary of ``validationIssues`` for inline UI.
+    var validationMessage: String {
+        EventEditorDisplayNames.validationSummary(for: validationIssues)
+    }
+
+    /// Localized message for ``lastError``, when present.
+    var errorAlertMessage: String? {
+        guard let lastError else {
+            return nil
+        }
+        return EventEditorDisplayNames.message(for: lastError)
+    }
+
+    /// `true` when ``lastError`` should be presented as an alert (not inline validation).
+    var shouldPresentErrorAlert: Bool {
+        guard let lastError else {
+            return false
+        }
+        if case .validationFailed = lastError {
+            return false
+        }
+        return true
+    }
+
     /// `true` when the editor is updating an existing event.
     var isEditing: Bool {
         mode == .edit
+    }
+
+    /// Clears ``lastError`` after the user dismisses an alert.
+    func clearLastError() {
+        lastError = nil
     }
 
     // MARK: - Private Helpers

@@ -22,6 +22,12 @@ struct EventEditorView: View {
     /// Controls the delete confirmation dialog.
     @State private var isShowingDeleteConfirmation: Bool = false
 
+    /// Controls the operation-failure alert.
+    @State private var isShowingErrorAlert: Bool = false
+
+    /// Brief success feedback before dismissing after a successful save/delete.
+    @State private var showsSuccessFeedback: Bool = false
+
     // MARK: - Lifecycle
 
     /// Creates the event editor popup.
@@ -41,6 +47,11 @@ struct EventEditorView: View {
             titleField
             descriptionField
             selectorsGrid
+
+            if viewModel.hasValidationIssues {
+                validationMessage
+            }
+
             saveButton
 
             if viewModel.isEditing {
@@ -51,10 +62,16 @@ struct EventEditorView: View {
         .glassEffect(.subtle, cornerRadius: Spacing.Radius.xl)
         .padding(.horizontal, Spacing.pageHorizontal)
         .onChange(of: viewModel.didCompleteMutation) { _, completed in
-            // Catalog refresh already happened inside EventPersistenceService.
-            if completed {
-                onDismiss()
+            guard completed else {
+                return
             }
+            presentSuccessThenDismiss()
+        }
+        .onChange(of: viewModel.lastError) { _, error in
+            guard error != nil, viewModel.shouldPresentErrorAlert else {
+                return
+            }
+            isShowingErrorAlert = true
         }
         .task {
             // Permission prompt only; popup layout is unchanged.
@@ -71,6 +88,16 @@ struct EventEditorView: View {
             Button(String(localized: "event_delete_cancel"), role: .cancel) {}
         } message: {
             Text(String(localized: "event_delete_confirm_message"))
+        }
+        .alert(
+            String(localized: "event_error_alert_title"),
+            isPresented: $isShowingErrorAlert
+        ) {
+            Button(String(localized: "event_error_alert_dismiss"), role: .cancel) {
+                viewModel.clearLastError()
+            }
+        } message: {
+            Text(viewModel.errorAlertMessage ?? String(localized: "event_error_unknown"))
         }
     }
 
@@ -92,15 +119,54 @@ struct EventEditorView: View {
             .accessibilityLabel(Text(String(localized: "event_editor_close")))
 
             GlassCircleButton(
-                systemImage: Icons.Events.confirm,
+                systemImage: showsSuccessFeedback ? Icons.Status.success : Icons.Events.confirm,
                 font: Typography.title3,
-                foreground: ColorPalette.editorAccent,
+                foreground: showsSuccessFeedback ? ColorPalette.success : ColorPalette.editorAccent,
                 showsGlow: true
             ) {
                 Task { await persistChanges() }
             }
-            .disabled(viewModel.isSaving)
-            .accessibilityLabel(Text(String(localized: "event_editor_confirm")))
+            .disabled(viewModel.isSaving || showsSuccessFeedback)
+            .accessibilityLabel(
+                Text(
+                    showsSuccessFeedback
+                        ? String(localized: "event_save_success")
+                        : String(localized: "event_editor_confirm")
+                )
+            )
+            .appAnimation(Animations.snappy, value: showsSuccessFeedback)
+        }
+    }
+
+    // MARK: - Feedback
+
+    /// Inline validation copy using existing typography and status colors.
+    private var validationMessage: some View {
+        HStack(alignment: .top, spacing: Spacing.xs) {
+            Image(systemName: Icons.Status.warning)
+                .font(Typography.caption)
+                .foregroundStyle(ColorPalette.warning)
+
+            Text(viewModel.validationMessage)
+                .font(Typography.caption)
+                .foregroundStyle(ColorPalette.warning)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        }
+        .accessibilityElement(children: .combine)
+    }
+
+    /// Shows success affordances on existing controls, then dismisses.
+    private func presentSuccessThenDismiss() {
+        showsSuccessFeedback = true
+        Task {
+            do {
+                try await Task.sleep(
+                    nanoseconds: UInt64(Animations.regularDuration * 1_000_000_000)
+                )
+            } catch {
+                // Cancellation still dismisses so the editor does not remain stuck.
+            }
+            onDismiss()
         }
     }
 
@@ -425,11 +491,17 @@ struct EventEditorView: View {
             Task { await persistChanges() }
         } label: {
             HStack(spacing: Spacing.xs) {
-                Image(systemName: Icons.Events.save)
+                Image(systemName: showsSuccessFeedback ? Icons.Status.success : Icons.Events.save)
                     .font(Typography.headline)
-                    .foregroundStyle(ColorPalette.editorAccent)
+                    .foregroundStyle(
+                        showsSuccessFeedback ? ColorPalette.success : ColorPalette.editorAccent
+                    )
 
-                Text(String(localized: "event_save_button"))
+                Text(
+                    showsSuccessFeedback
+                        ? String(localized: "event_save_success")
+                        : String(localized: "event_save_button")
+                )
                     .font(Typography.headline)
                     .foregroundStyle(ColorPalette.onImagePrimary)
             }
@@ -446,8 +518,15 @@ struct EventEditorView: View {
             .appShadow(Shadows.glowCard)
         }
         .buttonStyle(.plain)
-        .disabled(viewModel.isSaving)
-        .accessibilityLabel(Text(String(localized: "event_save_button")))
+        .disabled(viewModel.isSaving || showsSuccessFeedback)
+        .accessibilityLabel(
+            Text(
+                showsSuccessFeedback
+                    ? String(localized: "event_save_success")
+                    : String(localized: "event_save_button")
+            )
+        )
+        .appAnimation(Animations.snappy, value: showsSuccessFeedback)
     }
 
     // MARK: - Delete

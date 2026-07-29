@@ -66,6 +66,19 @@ final class HomeViewModel {
         lastError = error
     }
 
+    /// Clears ``lastError`` after the user dismisses an alert.
+    func clearLastError() {
+        lastError = nil
+    }
+
+    /// Localized message for ``lastError``, when present.
+    var errorAlertMessage: String? {
+        guard let lastError else {
+            return nil
+        }
+        return EventEditorDisplayNames.message(for: lastError)
+    }
+
     // MARK: - Intents
 
     /// Selects an in-month day and routes by event count.

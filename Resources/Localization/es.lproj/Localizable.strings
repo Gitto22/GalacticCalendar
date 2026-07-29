@@ -73,3 +73,26 @@
 "day_events_action_edit" = "Editar";
 "day_events_action_duplicate" = "Duplicar";
 "day_events_action_delete" = "Eliminar";
+
+"event_validation_title_required" = "El título es obligatorio.";
+"event_validation_title_too_long" = "El título no puede superar %d caracteres.";
+"event_validation_description_too_long" = "La descripción no puede superar %d caracteres.";
+"event_validation_invalid_date" = "La fecha del evento no es válida.";
+"event_validation_invalid_end_date" = "La hora de fin debe ser posterior o igual al inicio.";
+"event_validation_invalid_timezone" = "La zona horaria no es válida.";
+"event_validation_invalid_reminder" = "El recordatorio no es válido respecto a la fecha del evento.";
+"event_validation_invalid_repeat_interval" = "El intervalo de repetición no es válido.";
+"event_validation_invalid_repeat_end_date" = "La fecha de fin de la repetición no es válida.";
+
+"event_error_alert_title" = "No se pudo completar la acción";
+"event_error_alert_dismiss" = "Entendido";
+"event_error_not_found" = "No se encontró el evento.";
+"event_error_save_failed" = "No se pudo guardar el evento.";
+"event_error_reminder_unauthorized" = "No hay permiso para enviar recordatorios.";
+"event_error_reminder_scheduling_failed" = "No se pudo programar el recordatorio.";
+"event_error_reminder_fire_date_in_past" = "La fecha del recordatorio ya ha pasado.";
+"event_error_catalog_load_failed" = "No se pudieron cargar los eventos.";
+"event_error_store_unavailable" = "El almacenamiento local no está disponible. Los cambios pueden no guardarse.";
+"event_error_unknown" = "Ha ocurrido un error inesperado.";
+
+"event_save_success" = "Evento guardado";

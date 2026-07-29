@@ -108,4 +108,61 @@ enum EventEditorDisplayNames {
             String(localized: "event_status_cancelled")
         }
     }
+
+    // MARK: - Validation
+
+    /// Localized message for a single validation issue.
+    static func message(for issue: EventValidationIssue) -> String {
+        switch issue {
+        case .titleRequired:
+            String(localized: "event_validation_title_required")
+        case .titleTooLong(let maximum):
+            String(format: String(localized: "event_validation_title_too_long"), maximum)
+        case .descriptionTooLong(let maximum):
+            String(format: String(localized: "event_validation_description_too_long"), maximum)
+        case .invalidDate:
+            String(localized: "event_validation_invalid_date")
+        case .invalidEndDate:
+            String(localized: "event_validation_invalid_end_date")
+        case .invalidTimeZone:
+            String(localized: "event_validation_invalid_timezone")
+        case .invalidReminder:
+            String(localized: "event_validation_invalid_reminder")
+        case .invalidRepeatInterval:
+            String(localized: "event_validation_invalid_repeat_interval")
+        case .invalidRepeatEndDate:
+            String(localized: "event_validation_invalid_repeat_end_date")
+        }
+    }
+
+    /// Joined localized summary for one or more validation issues.
+    static func validationSummary(for issues: [EventValidationIssue]) -> String {
+        issues.map(message(for:)).joined(separator: "\n")
+    }
+
+    // MARK: - Persistence Errors
+
+    /// Localized message for a persistence / reminder failure.
+    static func message(for error: EventPersistenceError) -> String {
+        switch error {
+        case .validationFailed(let issues):
+            validationSummary(for: issues)
+        case .notFound:
+            String(localized: "event_error_not_found")
+        case .saveFailed:
+            String(localized: "event_error_save_failed")
+        case .reminderUnauthorized:
+            String(localized: "event_error_reminder_unauthorized")
+        case .reminderSchedulingFailed:
+            String(localized: "event_error_reminder_scheduling_failed")
+        case .reminderFireDateInPast:
+            String(localized: "event_error_reminder_fire_date_in_past")
+        case .catalogLoadFailed:
+            String(localized: "event_error_catalog_load_failed")
+        case .storeUnavailable:
+            String(localized: "event_error_store_unavailable")
+        case .unknown:
+            String(localized: "event_error_unknown")
+        }
+    }
 }

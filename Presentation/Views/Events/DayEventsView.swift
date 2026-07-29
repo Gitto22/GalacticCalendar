@@ -19,6 +19,9 @@ struct DayEventsView: View {
     /// Dismiss handler for the close control.
     private let onDismiss: () -> Void
 
+    /// Controls the operation-failure alert.
+    @State private var isShowingErrorAlert: Bool = false
+
     // MARK: - Lifecycle
 
     /// Creates the day events screen.
@@ -52,6 +55,19 @@ struct DayEventsView: View {
             }
         ) {
             eventEditorCover
+        }
+        .onChange(of: viewModel.lastError) { _, error in
+            isShowingErrorAlert = error != nil
+        }
+        .alert(
+            String(localized: "event_error_alert_title"),
+            isPresented: $isShowingErrorAlert
+        ) {
+            Button(String(localized: "event_error_alert_dismiss"), role: .cancel) {
+                viewModel.clearLastError()
+            }
+        } message: {
+            Text(viewModel.errorAlertMessage ?? String(localized: "event_error_unknown"))
         }
     }
 
