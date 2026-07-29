@@ -5,21 +5,6 @@
 
 import Foundation
 
-/// Semantic color tokens for event indicators on a calendar day.
-enum CalendarEventColorToken: String, Sendable, CaseIterable, Codable, Hashable, Identifiable {
-
-    // MARK: - Cases
-
-    case purple
-    case green
-    case blue
-    case orange
-
-    // MARK: - Identifiable
-
-    var id: String { rawValue }
-}
-
 /// Position of a day relative to the month being displayed.
 enum CalendarDayMembership: String, Sendable, Codable, Hashable {
 
@@ -62,16 +47,26 @@ struct CalendarDay: Identifiable, Equatable, Sendable, Hashable, Codable {
     /// Indicates whether the day matches the engine's reference "today".
     let isToday: Bool
 
-    // MARK: - Interaction / Events (prepared)
+    // MARK: - Interaction / Events
 
     /// Indicates whether the day is currently selected.
     var isSelected: Bool
 
-    /// Indicates whether the day has associated events.
-    var hasEvents: Bool
+    /// Total number of events occurring on this day.
+    var eventCount: Int
 
-    /// Event indicator color tokens for future event wiring.
-    var eventColors: [CalendarEventColorToken]
+    /// Up to four ``EventColor`` values used by calendar indicators.
+    var eventColors: [EventColor]
+
+    /// Indicates whether the day has associated events.
+    var hasEvents: Bool {
+        eventCount > 0
+    }
+
+    /// `true` when more events exist than visible indicator slots.
+    var showsEventOverflow: Bool {
+        eventCount > 4
+    }
 
     // MARK: - Lifecycle
 
@@ -83,8 +78,8 @@ struct CalendarDay: Identifiable, Equatable, Sendable, Hashable, Codable {
         membership: CalendarDayMembership,
         isToday: Bool,
         isSelected: Bool = false,
-        hasEvents: Bool = false,
-        eventColors: [CalendarEventColorToken] = []
+        eventCount: Int = 0,
+        eventColors: [EventColor] = []
     ) {
         self.id = id
         self.date = date
@@ -92,8 +87,23 @@ struct CalendarDay: Identifiable, Equatable, Sendable, Hashable, Codable {
         self.membership = membership
         self.isToday = isToday
         self.isSelected = isSelected
-        self.hasEvents = hasEvents
+        self.eventCount = max(0, eventCount)
         self.eventColors = Array(eventColors.prefix(4))
+    }
+}
+
+// MARK: - Event Annotation
+
+extension CalendarDay {
+
+    /// Returns a copy annotated with events that fall on this day.
+    /// - Parameter events: Events whose ``Event/date`` matches this day.
+    /// - Returns: Day carrying indicator colors and total count.
+    func applyingEvents(_ events: [Event]) -> CalendarDay {
+        var copy = self
+        copy.eventCount = events.count
+        copy.eventColors = Array(events.prefix(4).map(\.color))
+        return copy
     }
 }
 

@@ -241,7 +241,7 @@ struct CalendarEngine: CalendarGenerating, Sendable {
             membership: membership,
             isToday: calendar.isDate(startOfDay, inSameDayAs: today),
             isSelected: false,
-            hasEvents: false,
+            eventCount: 0,
             eventColors: []
         )
     }

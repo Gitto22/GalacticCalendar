@@ -42,4 +42,14 @@ final class ViewModelFactory {
         viewModel.prepareForCreation(on: date)
         return viewModel
     }
+
+    /// Builds a ``DayEventsViewModel`` for the given calendar day.
+    /// - Parameter date: Day to list.
+    /// - Returns: Configured day-events ViewModel.
+    func makeDayEventsViewModel(date: Date) -> DayEventsViewModel {
+        DayEventsViewModel(
+            date: date,
+            persistenceService: container.eventPersistenceService
+        )
+    }
 }

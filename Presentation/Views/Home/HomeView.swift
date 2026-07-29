@@ -13,12 +13,12 @@ import SwiftUI
 /// 3. ``UniverseMessageCard``
 /// 4. ``CalendarGridView``
 ///
-/// Presents ``EventEditorView`` when an in-month day is selected.
+/// Day tap routes to ``DayEventsView`` when events exist, otherwise to ``EventEditorView``.
 struct HomeView: View {
 
     // MARK: - Properties
 
-    /// ViewModel for Home interactions and event-editor presentation.
+    /// ViewModel for Home interactions and modal presentation.
     @State private var viewModel: HomeViewModel
 
     /// Engine providing real days for the current month.
@@ -53,7 +53,7 @@ struct HomeView: View {
                     .padding(.horizontal, Spacing.pageHorizontal)
 
                 CalendarGridView(engine: calendarEngine) { day in
-                    viewModel.selectDay(day)
+                    Task { await viewModel.selectDay(day) }
                 }
                 .padding(.horizontal, Spacing.pageHorizontal)
 
@@ -62,12 +62,32 @@ struct HomeView: View {
         }
         .accessibilityElement(children: .contain)
         .fullScreenCover(
+            isPresented: $viewModel.isPresentingDayEvents,
+            onDismiss: {
+                viewModel.dismissDayEvents()
+            }
+        ) {
+            dayEventsCover(viewModel: viewModel)
+        }
+        .fullScreenCover(
             isPresented: $viewModel.isPresentingEventEditor,
             onDismiss: {
                 viewModel.dismissEventEditor()
             }
         ) {
             eventEditorCover(viewModel: viewModel)
+        }
+    }
+
+    // MARK: - Day Events
+
+    /// Modal host for ``DayEventsView``.
+    @ViewBuilder
+    private func dayEventsCover(viewModel: HomeViewModel) -> some View {
+        if let dayEventsViewModel = viewModel.dayEventsViewModel {
+            DayEventsView(viewModel: dayEventsViewModel) {
+                viewModel.dismissDayEvents()
+            }
         }
     }
 
@@ -92,14 +112,13 @@ struct HomeView: View {
 
 #if DEBUG
 #Preview("Home") {
-    HomeView(
-        viewModel: HomeViewModel(
-            eventPersistenceService: EventPersistenceService(
-                repository: PreviewHomeEventRepository()
-            )
-        )
+    let persistence = EventPersistenceService(
+        repository: PreviewHomeEventRepository()
     )
-    .environment(ThemeManager())
+
+    HomeView(viewModel: HomeViewModel(eventPersistenceService: persistence))
+        .environment(ThemeManager())
+        .environment(persistence)
 }
 
 @MainActor
@@ -115,10 +134,14 @@ private final class PreviewHomeEventRepository: EventRepositoryProtocol {
 
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
+    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
+
     func update(_ event: Event) async throws {}
 
     func delete(_ event: Event) async throws {}
 
     func delete(id: UUID) async throws {}
+
+    func duplicate(_ event: Event) async throws -> Event { event.duplicated() }
 }
 #endif

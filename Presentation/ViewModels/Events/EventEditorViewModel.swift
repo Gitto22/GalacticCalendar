@@ -114,15 +114,21 @@ final class EventEditorViewModel {
     ///   - persistenceService: Persistence façade for event CRUD.
     ///   - validationService: Validator for draft events.
     ///   - initialDate: Default date for a new event draft.
+    ///   - event: Optional existing event that puts the editor in edit mode.
     init(
         persistenceService: EventPersistenceService,
         validationService: EventValidationService = EventValidationService(),
-        initialDate: Date = Date()
+        initialDate: Date = Date(),
+        event: Event? = nil
     ) {
         self.persistenceService = persistenceService
         self.validationService = validationService
         self.date = initialDate
         self.reminder = EventReminderOption.fifteenMinutes.reminderDate(relativeTo: initialDate)
+
+        if let event {
+            prepareForEditing(event)
+        }
     }
 
     // MARK: - Mode Configuration
@@ -235,6 +241,29 @@ final class EventEditorViewModel {
         await performMutation {
             try await persistenceService.delete(id: editingEventID)
         }
+    }
+
+    // MARK: - Duplicate
+
+    /// Creates a persisted duplicate of the event currently loaded for editing.
+    ///
+    /// Prepared for UI surfaces that expose a Duplicate action.
+    /// No-ops when the editor is not in ``EventEditorMode/edit``.
+    /// - Returns: The duplicated event when successful; otherwise `nil`.
+    @discardableResult
+    func duplicateEvent() async -> Event? {
+        guard mode == .edit else {
+            return nil
+        }
+
+        let source = makeDraftEvent()
+        var created: Event?
+
+        await performMutation {
+            created = try await persistenceService.duplicate(source)
+        }
+
+        return created
     }
 
     // MARK: - Reset

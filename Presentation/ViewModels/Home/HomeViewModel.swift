@@ -7,15 +7,15 @@ import Foundation
 
 /// Presentation model for the Home screen.
 ///
-/// Owns Home interaction state for day selection and event-editor presentation.
-/// Persistence is delegated to ``EventPersistenceService`` through ``EventEditorViewModel``.
+/// Owns Home interaction state for day selection, day-events list,
+/// and event-editor presentation.
 @MainActor
 @Observable
 final class HomeViewModel {
 
     // MARK: - Dependencies
 
-    /// Persistence façade used to construct the event editor ViewModel.
+    /// Persistence façade used to construct feature ViewModels.
     private let eventPersistenceService: EventPersistenceService
 
     // MARK: - State
@@ -23,10 +23,16 @@ final class HomeViewModel {
     /// Absolute date of the currently selected calendar day, if any.
     private(set) var selectedDate: Date?
 
-    /// `true` while the event editor modal is presented.
+    /// `true` while the day-events list is presented.
+    var isPresentingDayEvents: Bool = false
+
+    /// ViewModel driving the day-events screen, if any.
+    private(set) var dayEventsViewModel: DayEventsViewModel?
+
+    /// `true` while the event editor modal is presented from Home (empty day).
     var isPresentingEventEditor: Bool = false
 
-    /// ViewModel driving the presented event editor, if any.
+    /// ViewModel driving the Home-presented event editor, if any.
     private(set) var eventEditorViewModel: EventEditorViewModel?
 
     // MARK: - Lifecycle
@@ -39,27 +45,63 @@ final class HomeViewModel {
 
     // MARK: - Intents
 
-    /// Selects an in-month day and presents the event editor for creation.
+    /// Selects an in-month day and routes to day events or the create editor.
+    ///
+    /// - If the day already has events → presents ``DayEventsView``.
+    /// - If the day has no events → presents ``EventEditorView`` for creation.
     /// - Parameter day: Calendar day tapped by the user.
-    func selectDay(_ day: CalendarDay) {
+    func selectDay(_ day: CalendarDay) async {
         guard day.isCurrentMonth else {
             return
         }
 
         selectedDate = day.date
 
-        let editor = EventEditorViewModel(
-            persistenceService: eventPersistenceService,
-            initialDate: day.date
-        )
-        editor.prepareForCreation(on: day.date)
-        eventEditorViewModel = editor
-        isPresentingEventEditor = true
+        let existingEvents: [Event]
+        do {
+            existingEvents = try await eventPersistenceService.fetch(on: day.date)
+        } catch {
+            existingEvents = []
+        }
+
+        if existingEvents.isEmpty {
+            presentEventEditorForCreation(on: day.date)
+        } else {
+            presentDayEvents(on: day.date)
+        }
     }
 
-    /// Dismisses the event editor without additional persistence side effects.
+    /// Dismisses the day-events screen.
+    func dismissDayEvents() {
+        isPresentingDayEvents = false
+        dayEventsViewModel = nil
+    }
+
+    /// Dismisses the Home-presented event editor.
     func dismissEventEditor() {
         isPresentingEventEditor = false
         eventEditorViewModel = nil
+    }
+
+    // MARK: - Private
+
+    /// Presents the day-events list for the given date.
+    private func presentDayEvents(on date: Date) {
+        dayEventsViewModel = DayEventsViewModel(
+            date: date,
+            persistenceService: eventPersistenceService
+        )
+        isPresentingDayEvents = true
+    }
+
+    /// Presents the event editor in create mode for an empty day.
+    private func presentEventEditorForCreation(on date: Date) {
+        let editor = EventEditorViewModel(
+            persistenceService: eventPersistenceService,
+            initialDate: date
+        )
+        editor.prepareForCreation(on: date)
+        eventEditorViewModel = editor
+        isPresentingEventEditor = true
     }
 }

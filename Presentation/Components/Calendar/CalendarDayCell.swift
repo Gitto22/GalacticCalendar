@@ -28,7 +28,7 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
     /// Legacy alias kept for outside-month presentation helpers.
     case outsideMonth
 
-    /// Reserved for future event indicators.
+    /// Reserved for event indicators when the day has events.
     case withEvent
 
     /// Reserved for future gift decoration.
@@ -42,8 +42,8 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
 /// Single day cell for the approved monthly calendar grid.
 ///
 /// Shows the day number with:
-/// current-month, previous-month, next-month, today, and selected states.
-/// Event indicators are not rendered yet.
+/// current-month, previous-month, next-month, today, selected,
+/// and event-indicator states.
 struct CalendarDayCell: View {
 
     // MARK: - Environment
@@ -55,6 +55,8 @@ struct CalendarDayCell: View {
     let dayNumber: Int
     let isWeekend: Bool
     let states: Set<CalendarDayCellState>
+    let eventColors: [EventColor]
+    let eventCount: Int
 
     // MARK: - Lifecycle
 
@@ -63,17 +65,23 @@ struct CalendarDayCell: View {
         self.dayNumber = day.dayNumber
         self.isWeekend = day.isWeekend()
         self.states = CalendarDayPresentationMapper.states(for: day)
+        self.eventColors = day.eventColors
+        self.eventCount = day.eventCount
     }
 
     /// Creates a day cell from explicit presentation values.
     init(
         dayNumber: Int,
         isWeekend: Bool = false,
-        states: Set<CalendarDayCellState> = [.normal]
+        states: Set<CalendarDayCellState> = [.normal],
+        eventColors: [EventColor] = [],
+        eventCount: Int = 0
     ) {
         self.dayNumber = dayNumber
         self.isWeekend = isWeekend
         self.states = states.isEmpty ? [.normal] : states
+        self.eventColors = eventColors
+        self.eventCount = eventCount
     }
 
     // MARK: - Body
@@ -85,8 +93,7 @@ struct CalendarDayCell: View {
                 .fontWeight(.medium)
                 .foregroundStyle(dayNumberColor)
 
-            // Reserved layout slot. Real events are not shown yet.
-            EventIndicatorsView(colors: [])
+            EventIndicatorsView(eventColors: eventColors, totalCount: eventCount)
         }
         .frame(maxWidth: .infinity)
         .frame(minHeight: dayCellMinHeight)

@@ -137,4 +137,27 @@ extension Event {
         copy.updatedAt = date
         return copy
     }
+
+    /// Returns a new event ready to be persisted as a duplicate.
+    ///
+    /// Copies content fields and assigns a fresh identity and timestamps.
+    /// - Parameter date: Optional date override for the duplicate. Defaults to the source date.
+    /// - Returns: Independent event copy suitable for ``EventPersistenceService/create(_:)``.
+    func duplicated(on date: Date? = nil) -> Event {
+        let now = Date()
+        return Event(
+            id: UUID(),
+            title: title,
+            description: description,
+            date: date ?? self.date,
+            reminder: reminder,
+            repeatRule: repeatRule,
+            category: category,
+            priority: priority,
+            status: status,
+            color: color,
+            createdAt: now,
+            updatedAt: now
+        )
+    }
 }

@@ -23,6 +23,11 @@
 "event_field_status" = "Status";
 "event_field_color" = "Event color";
 "event_save_button" = "Save event";
+"event_delete_button" = "Delete event";
+"event_delete_confirm_title" = "Delete event";
+"event_delete_confirm_message" = "This action cannot be undone.";
+"event_delete_confirm_action" = "Delete";
+"event_delete_cancel" = "Cancel";
 
 "event_reminder_none" = "No reminder";
 "event_reminder_at_time" = "At event time";
@@ -55,3 +60,10 @@
 "event_status_in_progress" = "In progress";
 "event_status_completed" = "Completed";
 "event_status_cancelled" = "Cancelled";
+
+"day_events_title" = "Day events";
+"day_events_close" = "Close";
+"day_events_new_event" = "New event";
+"day_events_action_edit" = "Edit";
+"day_events_action_duplicate" = "Duplicate";
+"day_events_action_delete" = "Delete";

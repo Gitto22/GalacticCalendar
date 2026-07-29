@@ -19,12 +19,15 @@ struct EventEditorView: View {
     /// Dismiss handler invoked by the close control after cancel.
     private let onDismiss: () -> Void
 
+    /// Controls the delete confirmation dialog.
+    @State private var isShowingDeleteConfirmation: Bool = false
+
     // MARK: - Lifecycle
 
     /// Creates the event editor popup.
     /// - Parameters:
     ///   - viewModel: Bound editor ViewModel.
-    ///   - onDismiss: Called when the user closes without saving, or after a successful save.
+    ///   - onDismiss: Called when the user closes without saving, or after a successful mutation.
     init(viewModel: EventEditorViewModel, onDismiss: @escaping () -> Void = {}) {
         self.viewModel = viewModel
         self.onDismiss = onDismiss
@@ -39,6 +42,10 @@ struct EventEditorView: View {
             descriptionField
             selectorsGrid
             saveButton
+
+            if viewModel.isEditing {
+                deleteButton
+            }
         }
         .padding(Spacing.md)
         .glassEffect(.subtle, cornerRadius: Spacing.Radius.xl)
@@ -47,6 +54,18 @@ struct EventEditorView: View {
             if completed {
                 onDismiss()
             }
+        }
+        .confirmationDialog(
+            String(localized: "event_delete_confirm_title"),
+            isPresented: $isShowingDeleteConfirmation,
+            titleVisibility: .visible
+        ) {
+            Button(String(localized: "event_delete_confirm_action"), role: .destructive) {
+                Task { await viewModel.deleteEvent() }
+            }
+            Button(String(localized: "event_delete_cancel"), role: .cancel) {}
+        } message: {
+            Text(String(localized: "event_delete_confirm_message"))
         }
     }
 
@@ -73,7 +92,7 @@ struct EventEditorView: View {
                 foreground: ColorPalette.editorAccent,
                 showsGlow: true
             ) {
-                Task { await viewModel.createEvent() }
+                Task { await persistChanges() }
             }
             .disabled(viewModel.isSaving)
             .accessibilityLabel(Text(String(localized: "event_editor_confirm")))
@@ -341,7 +360,7 @@ struct EventEditorView: View {
     /// Full-width save action with sparkles and glow border.
     private var saveButton: some View {
         Button {
-            Task { await viewModel.createEvent() }
+            Task { await persistChanges() }
         } label: {
             HStack(spacing: Spacing.xs) {
                 Image(systemName: Icons.Events.save)
@@ -367,6 +386,52 @@ struct EventEditorView: View {
         .buttonStyle(.plain)
         .disabled(viewModel.isSaving)
         .accessibilityLabel(Text(String(localized: "event_save_button")))
+    }
+
+    // MARK: - Delete
+
+    /// Destructive action shown only while editing an existing event.
+    private var deleteButton: some View {
+        Button {
+            isShowingDeleteConfirmation = true
+        } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: Icons.Events.delete)
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorPalette.danger)
+
+                Text(String(localized: "event_delete_button"))
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorPalette.danger)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.sm)
+            .background {
+                RoundedRectangle(cornerRadius: Spacing.Radius.lg, style: .continuous)
+                    .fill(ColorPalette.editorTileFill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Spacing.Radius.lg, style: .continuous)
+                    .stroke(
+                        ColorPalette.danger.opacity(ColorPalette.glassStrokeRegularOpacity),
+                        lineWidth: Spacing.cardStroke
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isSaving)
+        .accessibilityLabel(Text(String(localized: "event_delete_button")))
+    }
+
+    // MARK: - Persistence
+
+    /// Persists create or update according to the current editor mode.
+    private func persistChanges() async {
+        if viewModel.isEditing {
+            await viewModel.updateEvent()
+        } else {
+            await viewModel.createEvent()
+        }
     }
 
     // MARK: - Selector Helpers
@@ -471,10 +536,14 @@ private final class PreviewEventRepository: EventRepositoryProtocol {
 
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
+    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
+
     func update(_ event: Event) async throws {}
 
     func delete(_ event: Event) async throws {}
 
     func delete(id: UUID) async throws {}
+
+    func duplicate(_ event: Event) async throws -> Event { event.duplicated() }
 }
 #endif

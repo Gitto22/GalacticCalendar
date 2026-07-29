@@ -33,6 +33,10 @@ protocol EventRepositoryProtocol: AnyObject {
     /// - Parameter interval: Date interval to query.
     func fetch(in interval: DateInterval) async throws -> [Event]
 
+    /// Returns events in `interval` grouped by start-of-day.
+    /// - Parameter interval: Date interval to query.
+    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]]
+
     // MARK: - Update
 
     /// Updates an existing event.
@@ -48,4 +52,11 @@ protocol EventRepositoryProtocol: AnyObject {
     /// Deletes an event by identifier.
     /// - Parameter id: Event identifier.
     func delete(id: UUID) async throws
+
+    // MARK: - Duplicate
+
+    /// Persists a duplicated copy of an existing event.
+    /// - Parameter event: Source event to duplicate.
+    /// - Returns: The newly created duplicate.
+    func duplicate(_ event: Event) async throws -> Event
 }

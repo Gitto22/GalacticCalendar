@@ -39,6 +39,11 @@ final class EventPersistenceService {
     /// Validator applied before create/update.
     private let validationService: EventValidationService
 
+    /// Monotonic revision bumped after every successful create, update, or delete.
+    ///
+    /// Calendar UI observes this value to refresh event indicators automatically.
+    private(set) var eventsRevision: Int = 0
+
     // MARK: - Lifecycle
 
     /// Creates a persistence service.
@@ -61,6 +66,7 @@ final class EventPersistenceService {
         try ensureValid(event)
         do {
             try await repository.create(event)
+            bumpEventsRevision()
         } catch {
             throw mapRepositoryError(error)
         }
@@ -107,6 +113,16 @@ final class EventPersistenceService {
         }
     }
 
+    /// Returns events inside a date interval grouped by start-of-day.
+    /// - Parameter interval: Query interval.
+    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] {
+        do {
+            return try await repository.fetchGroupedByDay(in: interval)
+        } catch {
+            throw mapRepositoryError(error)
+        }
+    }
+
     // MARK: - Update
 
     /// Validates and updates an event.
@@ -115,6 +131,7 @@ final class EventPersistenceService {
         try ensureValid(event)
         do {
             try await repository.update(event)
+            bumpEventsRevision()
         } catch {
             throw mapRepositoryError(error)
         }
@@ -127,6 +144,7 @@ final class EventPersistenceService {
     func delete(_ event: Event) async throws {
         do {
             try await repository.delete(event)
+            bumpEventsRevision()
         } catch {
             throw mapRepositoryError(error)
         }
@@ -137,12 +155,30 @@ final class EventPersistenceService {
     func delete(id: UUID) async throws {
         do {
             try await repository.delete(id: id)
+            bumpEventsRevision()
         } catch {
             throw mapRepositoryError(error)
         }
     }
 
+    // MARK: - Duplicate
+
+    /// Creates a persisted duplicate of an existing event.
+    /// - Parameter event: Source event.
+    /// - Returns: Newly created duplicate.
+    @discardableResult
+    func duplicate(_ event: Event) async throws -> Event {
+        let copy = event.duplicated()
+        try await create(copy)
+        return copy
+    }
+
     // MARK: - Private
+
+    /// Advances ``eventsRevision`` so observers reload calendar indicators.
+    private func bumpEventsRevision() {
+        eventsRevision += 1
+    }
 
     /// Ensures the event passes domain validation.
     private func ensureValid(_ event: Event) throws {

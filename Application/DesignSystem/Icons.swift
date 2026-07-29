@@ -104,6 +104,9 @@ enum Icons {
 
         /// Save action sparkles.
         static let save = "sparkles"
+
+        /// Duplicate event affordance.
+        static let duplicate = "plus.square.on.square"
     }
 
     // MARK: - Home

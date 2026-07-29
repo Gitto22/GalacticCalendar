@@ -90,6 +90,16 @@ final class EventRepository: EventRepositoryProtocol {
         return entities.map(EventEntityMapper.makeDomain(from:))
     }
 
+    /// Fetches events in `interval` grouped by start-of-day.
+    /// - Parameter interval: Query interval.
+    /// - Returns: Events keyed by ``Calendar/startOfDay(for:)``.
+    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] {
+        let events = try await fetch(in: interval)
+        return Dictionary(grouping: events) { event in
+            calendar.startOfDay(for: event.date)
+        }
+    }
+
     // MARK: - Update
 
     func update(_ event: Event) async throws {
@@ -114,6 +124,14 @@ final class EventRepository: EventRepositoryProtocol {
 
         modelContext.delete(entity)
         try save()
+    }
+
+    // MARK: - Duplicate
+
+    func duplicate(_ event: Event) async throws -> Event {
+        let copy = event.duplicated()
+        try await create(copy)
+        return copy
     }
 
     // MARK: - Private
