@@ -8,8 +8,8 @@ import Foundation
 /// Contract for creating, reading, updating, and deleting events.
 ///
 /// Implementations (SwiftData, CloudKit, in-memory) live outside Domain.
-/// This protocol is imperative; the reactive catalog for UI lives in
-/// ``EventPersistenceService``.
+/// This protocol is imperative; the reactive catalog for UI is published by
+/// ``EventPersistenceService`` via ``EventCatalogService``.
 protocol EventRepositoryProtocol: AnyObject {
 
     // MARK: - Create

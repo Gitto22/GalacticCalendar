@@ -107,6 +107,18 @@ enum Icons {
 
         /// Duplicate event affordance.
         static let duplicate = "plus.square.on.square"
+
+        /// Event calendar day selector.
+        static let eventDate = "calendar"
+
+        /// Event start time selector.
+        static let startTime = "clock"
+
+        /// Event end time selector.
+        static let endTime = "clock.fill"
+
+        /// Event time zone selector.
+        static let timeZone = "globe"
     }
 
     // MARK: - Home

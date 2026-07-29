@@ -5,6 +5,15 @@
 
 import Foundation
 
-/// UserNotifications manager for local and remote notifications.
+/// Legacy Infrastructure façade for notifications.
 ///
-/// Scaffolding only. Implementation is intentionally deferred.
+/// Local event reminders are owned by ``NotificationService``
+/// (Application) + ``NotificationRepository`` (Data). Prefer those types.
+/// This manager remains as a thin forward-looking hook for remote / push work.
+enum NotificationManager {
+
+    // MARK: - Guidance
+
+    /// Documents the active local-reminder entry point.
+    static let localReminderServiceTypeName = "NotificationService"
+}

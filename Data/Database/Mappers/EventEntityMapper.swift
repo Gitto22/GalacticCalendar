@@ -19,6 +19,8 @@ enum EventEntityMapper {
             title: event.title,
             eventDescription: event.description,
             date: event.date,
+            endDate: event.endDate,
+            timeZoneIdentifier: event.timeZoneIdentifier,
             reminder: event.reminder,
             repeatRuleRawValue: event.repeatRule.encodeForPersistence(),
             categoryRawValue: event.category.rawValue,
@@ -38,6 +40,8 @@ enum EventEntityMapper {
         entity.title = event.title
         entity.eventDescription = event.description
         entity.date = event.date
+        entity.endDate = event.endDate
+        entity.timeZoneIdentifier = event.timeZoneIdentifier
         entity.reminder = event.reminder
         entity.repeatRuleRawValue = event.repeatRule.encodeForPersistence()
         entity.categoryRawValue = event.category.rawValue
@@ -58,6 +62,8 @@ enum EventEntityMapper {
             title: entity.title,
             description: entity.eventDescription,
             date: entity.date,
+            endDate: entity.endDate,
+            timeZoneIdentifier: entity.timeZoneIdentifier ?? TimeZone.current.identifier,
             reminder: entity.reminder,
             repeatRule: RepeatRule.decodeFromPersistence(entity.repeatRuleRawValue),
             category: EventCategory(rawValue: entity.categoryRawValue) ?? .other,

@@ -19,21 +19,33 @@ enum EventPersistenceError: Error, Equatable, Sendable {
     /// Underlying repository failed to save.
     case saveFailed
 
+    /// Local reminder could not be scheduled because authorization was denied.
+    case reminderUnauthorized
+
+    /// Local reminder scheduling failed.
+    case reminderSchedulingFailed
+
+    /// Reminder fire date was rejected as not in the future.
+    case reminderFireDateInPast
+
     /// Unexpected persistence failure.
     case unknown
 }
 
-/// Reactive application façade for event persistence.
+/// Application façade for event write operations and catalog publication.
 ///
-/// ## Single Source of Truth
-/// ``events`` is the in-memory catalog observed by ViewModels.
-/// Mutations write through ``EventRepositoryProtocol``, then refresh the catalog.
-/// Presentation must read from this service (or ViewModels that derive from it),
-/// not from ad-hoc repository fetches in views.
+/// ## Responsibilities
+/// - Validate before create/update.
+/// - Persist through ``EventRepositoryProtocol``.
+/// - Synchronize local reminders through ``NotificationService``.
+/// - Publish results into ``EventCatalogService`` (SSOT for reads).
 ///
-/// ## CloudKit
-/// When remote changes arrive, call ``refresh()`` to realign the catalog
-/// without introducing NotificationCenter fan-out.
+/// ## Non-responsibilities
+/// - Catalog query algorithms live in ``EventCatalogService``.
+/// - Validation rules live in ``EventValidationService``.
+///
+/// ## Observation
+/// ``events`` / ``eventsRevision`` mirror the catalog so existing ViewModels keep observing this type.
 @MainActor
 @Observable
 final class EventPersistenceService {
@@ -43,20 +55,21 @@ final class EventPersistenceService {
     /// Imperative SwiftData (or future CloudKit) repository.
     private let repository: any EventRepositoryProtocol
 
+    /// In-memory reactive catalog (read SSOT).
+    private let catalog: EventCatalogService
+
     /// Validator applied before create/update.
     private let validationService: EventValidationService
 
-    /// Calendar used for day-boundary queries against the catalog.
-    private let calendar: Calendar
+    /// Schedules and cancels local event reminders after successful mutations.
+    private let notificationService: NotificationService?
 
-    // MARK: - Source of Truth
+    // MARK: - Published Catalog Mirror
 
-    /// In-memory event catalog. ViewModels observe this array for automatic UI sync.
+    /// In-memory event catalog mirrored from ``EventCatalogService``.
     private(set) var events: [Event] = []
 
-    /// Monotonic token advanced whenever ``events`` is replaced after a mutation or refresh.
-    ///
-    /// Kept for lightweight identity/`task(id:)` bridging; prefer observing ``events`` directly.
+    /// Monotonic token mirrored from ``EventCatalogService``.
     private(set) var eventsRevision: Int = 0
 
     // MARK: - Lifecycle
@@ -64,16 +77,32 @@ final class EventPersistenceService {
     /// Creates a persistence service.
     /// - Parameters:
     ///   - repository: Event repository implementation.
+    ///   - catalog: In-memory catalog service.
     ///   - validationService: Event validator.
-    ///   - calendar: Calendar for day queries.
+    ///   - notificationService: Optional reminder synchronizer.
     init(
         repository: any EventRepositoryProtocol,
+        catalog: EventCatalogService = EventCatalogService(),
         validationService: EventValidationService = EventValidationService(),
-        calendar: Calendar = .current
+        notificationService: NotificationService? = nil
     ) {
         self.repository = repository
+        self.catalog = catalog
         self.validationService = validationService
-        self.calendar = calendar
+        self.notificationService = notificationService
+        publishCatalog()
+    }
+
+    // MARK: - Notifications
+
+    /// Requests local-notification permission when still undetermined.
+    /// - Returns: `true` when notifications may be delivered.
+    @discardableResult
+    func requestNotificationAuthorizationIfNeeded() async -> Bool {
+        guard let notificationService else {
+            return false
+        }
+        return await notificationService.requestAuthorizationIfNeeded()
     }
 
     // MARK: - Bootstrap
@@ -85,11 +114,14 @@ final class EventPersistenceService {
         await refresh()
     }
 
-    /// Reloads ``events`` from the repository and advances ``eventsRevision``.
+    /// Reloads the catalog from the repository and publishes to observers.
+    ///
+    /// Load failures keep the last known catalog; mutating APIs surface errors.
     func refresh() async {
         do {
             let fetched = try await repository.fetchAll()
-            replaceCatalog(with: fetched)
+            catalog.replaceAll(with: fetched)
+            publishCatalog()
         } catch {
             // Keep the last known catalog; surface errors on the next mutating call.
         }
@@ -98,134 +130,104 @@ final class EventPersistenceService {
     // MARK: - Catalog Queries (sync, reactive)
 
     /// Returns catalog events occurring on the given calendar day, sorted by time.
-    /// - Parameter date: Day anchor.
-    /// - Returns: Matching events from ``events``.
     func events(on date: Date) -> [Event] {
-        let dayStart = calendar.startOfDay(for: date)
-        return events
-            .filter { calendar.isDate($0.date, inSameDayAs: dayStart) }
-            .sorted { $0.date < $1.date }
+        catalog.events(on: date)
     }
 
     /// Returns a catalog event by identifier.
-    /// - Parameter id: Event identifier.
-    /// - Returns: Matching event, if present in ``events``.
     func event(id: UUID) -> Event? {
-        events.first { $0.id == id }
+        catalog.event(id: id)
     }
 
     /// Groups catalog events by start-of-day for the given interval.
-    /// - Parameter interval: Query interval (`end` exclusive).
-    /// - Returns: Day-start keys mapped to events.
     func eventsGroupedByDay(in interval: DateInterval) -> [Date: [Event]] {
-        let filtered = events.filter { event in
-            event.date >= interval.start && event.date < interval.end
-        }
-        return Dictionary(grouping: filtered) { event in
-            calendar.startOfDay(for: event.date)
-        }
+        catalog.eventsGroupedByDay(in: interval)
     }
 
     /// Returns catalog events whose ``RepeatRule`` is recurring.
-    /// - Returns: Recurring events (occurrences are not expanded).
     func recurringEvents() -> [Event] {
-        events.filter(\.repeatRule.isRecurring)
+        catalog.recurringEvents()
     }
 
     // MARK: - Create
 
-    /// Validates and creates an event, then refreshes the catalog.
+    /// Validates and creates an event, synchronizes its reminder, then refreshes the catalog.
     /// - Parameter event: Event to persist.
     func create(_ event: Event) async throws {
         try ensureValid(event)
         do {
             try await repository.create(event)
+        } catch {
+            throw mapError(error)
+        }
+        do {
+            try await synchronizeReminder(for: event)
             await refresh()
         } catch {
-            throw mapRepositoryError(error)
+            await refresh()
+            throw mapError(error)
         }
-    }
-
-    // MARK: - Read (async façade — prefers catalog)
-
-    /// Returns all catalog events.
-    func fetchAll() async throws -> [Event] {
-        events
-    }
-
-    /// Returns a catalog event by identifier.
-    /// - Parameter id: Event identifier.
-    func fetch(by id: UUID) async throws -> Event? {
-        event(id: id)
-    }
-
-    /// Returns catalog events for a specific calendar day.
-    /// - Parameter date: Day anchor.
-    func fetch(on date: Date) async throws -> [Event] {
-        events(on: date)
-    }
-
-    /// Returns catalog events inside a date interval.
-    /// - Parameter interval: Query interval.
-    func fetch(in interval: DateInterval) async throws -> [Event] {
-        events.filter { event in
-            event.date >= interval.start && event.date < interval.end
-        }
-        .sorted { $0.date < $1.date }
-    }
-
-    /// Returns catalog events grouped by start-of-day.
-    /// - Parameter interval: Query interval.
-    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] {
-        eventsGroupedByDay(in: interval)
-    }
-
-    /// Returns recurring catalog events.
-    func fetchRecurring() async throws -> [Event] {
-        recurringEvents()
     }
 
     // MARK: - Update
 
-    /// Validates and updates an event, then refreshes the catalog.
+    /// Validates and updates an event, synchronizes its reminder, then refreshes the catalog.
     /// - Parameter event: Event to update.
     func update(_ event: Event) async throws {
         try ensureValid(event)
         do {
             try await repository.update(event)
+        } catch {
+            throw mapError(error)
+        }
+        do {
+            try await synchronizeReminder(for: event)
             await refresh()
         } catch {
-            throw mapRepositoryError(error)
+            await refresh()
+            throw mapError(error)
         }
     }
 
     // MARK: - Delete
 
-    /// Deletes an event, then refreshes the catalog.
+    /// Deletes an event, cancels its reminder, then refreshes the catalog.
     /// - Parameter event: Event to delete.
     func delete(_ event: Event) async throws {
         do {
             try await repository.delete(event)
+        } catch {
+            throw mapError(error)
+        }
+        do {
+            try await cancelReminder(for: event.id)
             await refresh()
         } catch {
-            throw mapRepositoryError(error)
+            await refresh()
+            throw mapError(error)
         }
     }
 
-    /// Deletes an event by identifier, then refreshes the catalog.
+    /// Deletes an event by identifier, cancels its reminder, then refreshes the catalog.
     /// - Parameter id: Event identifier.
     func delete(id: UUID) async throws {
         do {
             try await repository.delete(id: id)
+        } catch {
+            throw mapError(error)
+        }
+        do {
+            try await cancelReminder(for: id)
             await refresh()
         } catch {
-            throw mapRepositoryError(error)
+            await refresh()
+            throw mapError(error)
         }
     }
 
     // MARK: - Duplicate
 
-    /// Creates a persisted duplicate, then refreshes the catalog via ``create(_:)``.
+    /// Creates a persisted duplicate via ``create(_:)``.
     /// - Parameter event: Source event.
     /// - Returns: Newly created duplicate.
     @discardableResult
@@ -237,10 +239,26 @@ final class EventPersistenceService {
 
     // MARK: - Private
 
-    /// Replaces the catalog and advances the revision token.
-    private func replaceCatalog(with newEvents: [Event]) {
-        events = newEvents.sorted { $0.date < $1.date }
-        eventsRevision += 1
+    /// Mirrors catalog state onto this observable service.
+    private func publishCatalog() {
+        events = catalog.events
+        eventsRevision = catalog.eventsRevision
+    }
+
+    /// Synchronizes the local reminder for a persisted event.
+    private func synchronizeReminder(for event: Event) async throws {
+        guard let notificationService else {
+            return
+        }
+        try await notificationService.synchronizeReminder(for: event)
+    }
+
+    /// Cancels the local reminder for a deleted event.
+    private func cancelReminder(for eventID: UUID) async throws {
+        guard let notificationService else {
+            return
+        }
+        try await notificationService.cancelReminder(for: eventID)
     }
 
     /// Ensures the event passes domain validation.
@@ -251,8 +269,12 @@ final class EventPersistenceService {
         }
     }
 
-    /// Maps repository errors into persistence-service errors.
-    private func mapRepositoryError(_ error: Error) -> EventPersistenceError {
+    /// Maps repository and notification errors into persistence-service errors.
+    private func mapError(_ error: Error) -> EventPersistenceError {
+        if let persistenceError = error as? EventPersistenceError {
+            return persistenceError
+        }
+
         if let repositoryError = error as? EventRepositoryError {
             switch repositoryError {
             case .notFound(let id):
@@ -262,8 +284,15 @@ final class EventPersistenceService {
             }
         }
 
-        if let persistenceError = error as? EventPersistenceError {
-            return persistenceError
+        if let notificationError = error as? NotificationRepositoryError {
+            switch notificationError {
+            case .unauthorized:
+                return .reminderUnauthorized
+            case .schedulingFailed:
+                return .reminderSchedulingFailed
+            case .fireDateInPast:
+                return .reminderFireDateInPast
+            }
         }
 
         return .unknown

@@ -28,8 +28,14 @@ final class EventEntity {
     /// Named `eventDescription` to avoid colliding with `CustomStringConvertible`.
     var eventDescription: String
 
-    /// Persisted event date.
+    /// Persisted start date and time.
     var date: Date
+
+    /// Optional end date and time.
+    var endDate: Date?
+
+    /// Optional IANA time zone identifier (nil = legacy / device current on read).
+    var timeZoneIdentifier: String?
 
     /// Optional reminder fire date.
     var reminder: Date?
@@ -70,6 +76,8 @@ final class EventEntity {
         title: String,
         eventDescription: String,
         date: Date,
+        endDate: Date? = nil,
+        timeZoneIdentifier: String? = nil,
         reminder: Date?,
         repeatRuleRawValue: String,
         categoryRawValue: String,
@@ -83,6 +91,8 @@ final class EventEntity {
         self.title = title
         self.eventDescription = eventDescription
         self.date = date
+        self.endDate = endDate
+        self.timeZoneIdentifier = timeZoneIdentifier
         self.reminder = reminder
         self.repeatRuleRawValue = repeatRuleRawValue
         self.categoryRawValue = categoryRawValue

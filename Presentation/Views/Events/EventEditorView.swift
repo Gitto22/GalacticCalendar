@@ -56,6 +56,10 @@ struct EventEditorView: View {
                 onDismiss()
             }
         }
+        .task {
+            // Permission prompt only; popup layout is unchanged.
+            await viewModel.requestNotificationAuthorizationIfNeeded()
+        }
         .confirmationDialog(
             String(localized: "event_delete_confirm_title"),
             isPresented: $isShowingDeleteConfirmation,
@@ -189,12 +193,69 @@ struct EventEditorView: View {
             ],
             spacing: Spacing.sm
         ) {
+            dateSelector
+            startTimeSelector
+            endTimeSelector
+            timeZoneSelector
             reminderSelector
             repeatSelector
             categorySelector
             prioritySelector
             statusSelector
             colorSelector
+        }
+        .environment(\.timeZone, EventTimeZone.timeZone(for: viewModel.timeZoneIdentifier))
+    }
+
+    /// Calendar day selector using the native date picker.
+    private var dateSelector: some View {
+        datePickerTile(
+            icon: Icons.Events.eventDate,
+            label: String(localized: "event_field_date"),
+            selection: $viewModel.date,
+            components: .date
+        )
+    }
+
+    /// Start time selector using the native time picker.
+    private var startTimeSelector: some View {
+        datePickerTile(
+            icon: Icons.Events.startTime,
+            label: String(localized: "event_field_start_time"),
+            selection: $viewModel.date,
+            components: .hourAndMinute
+        )
+    }
+
+    /// End time selector using the native time picker.
+    private var endTimeSelector: some View {
+        datePickerTile(
+            icon: Icons.Events.endTime,
+            label: String(localized: "event_field_end_time"),
+            selection: $viewModel.endDate,
+            components: .hourAndMinute
+        )
+    }
+
+    /// Time zone menu prepared for multi-device / CloudKit display.
+    private var timeZoneSelector: some View {
+        selectorMenu(
+            icon: Icons.Events.timeZone,
+            label: String(localized: "event_field_timezone"),
+            showsChevron: true
+        ) {
+            valueRow {
+                Text(viewModel.timeZoneDisplayName)
+                    .font(Typography.subheadline)
+                    .foregroundStyle(ColorPalette.onImagePrimary)
+                    .lineLimit(1)
+            }
+        } menuContent: {
+            ForEach(viewModel.selectableTimeZoneIdentifiers, id: \.self) { identifier in
+                Button(EventTimeZone.displayName(for: identifier)) {
+                    viewModel.timeZoneIdentifier = identifier
+                }
+            }
         }
     }
 
@@ -428,11 +489,7 @@ struct EventEditorView: View {
 
     /// Persists create or update according to the current editor mode.
     private func persistChanges() async {
-        if viewModel.isEditing {
-            await viewModel.updateEvent()
-        } else {
-            await viewModel.createEvent()
-        }
+        await viewModel.saveEvent()
     }
 
     // MARK: - Selector Helpers
@@ -451,6 +508,28 @@ struct EventEditorView: View {
             selectorTile(icon: icon, label: label, showsChevron: showsChevron, value: value)
         }
         .buttonStyle(.plain)
+    }
+
+    /// Selector tile hosting a compact native ``DatePicker``.
+    private func datePickerTile(
+        icon: String,
+        label: String,
+        selection: Binding<Date>,
+        components: DatePicker.Components
+    ) -> some View {
+        selectorTile(icon: icon, label: label, showsChevron: false) {
+            valueRow {
+                DatePicker(
+                    "",
+                    selection: selection,
+                    displayedComponents: components
+                )
+                .labelsHidden()
+                .tint(ColorPalette.editorAccent)
+                .font(Typography.subheadline)
+                .foregroundStyle(ColorPalette.onImagePrimary)
+            }
+        }
     }
 
     /// Shared glass tile chrome for selector cells.
@@ -514,39 +593,12 @@ struct EventEditorView: View {
         EventEditorView(
             viewModel: EventEditorViewModel(
                 persistenceService: EventPersistenceService(
-                    repository: PreviewEventRepository(),
+                    repository: EventsPreviewRepository(),
                     validationService: EventValidationService()
                 )
             )
         )
     }
     .environment(ThemeManager())
-}
-
-/// In-memory repository used only by event editor previews.
-@MainActor
-private final class PreviewEventRepository: EventRepositoryProtocol {
-
-    func create(_ event: Event) async throws {}
-
-    func fetchAll() async throws -> [Event] { [] }
-
-    func fetch(by id: UUID) async throws -> Event? { nil }
-
-    func fetch(on date: Date) async throws -> [Event] { [] }
-
-    func fetch(in interval: DateInterval) async throws -> [Event] { [] }
-
-    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
-
-    func fetchRecurring() async throws -> [Event] { [] }
-
-    func update(_ event: Event) async throws {}
-
-    func delete(_ event: Event) async throws {}
-
-    func delete(id: UUID) async throws {}
-
-    func duplicate(_ event: Event) async throws -> Event { event.duplicated() }
 }
 #endif

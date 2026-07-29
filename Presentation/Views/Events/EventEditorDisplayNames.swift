@@ -17,6 +17,8 @@ enum EventEditorDisplayNames {
             String(localized: "event_reminder_none")
         case .atEventTime:
             String(localized: "event_reminder_at_time")
+        case .fiveMinutes:
+            String(localized: "event_reminder_5_min")
         case .fifteenMinutes:
             String(localized: "event_reminder_15_min")
         case .thirtyMinutes:

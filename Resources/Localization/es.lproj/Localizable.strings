@@ -22,6 +22,10 @@
 "event_field_priority" = "Prioridad";
 "event_field_status" = "Estado";
 "event_field_color" = "Color del evento";
+"event_field_date" = "Fecha";
+"event_field_start_time" = "Inicio";
+"event_field_end_time" = "Fin";
+"event_field_timezone" = "Zona horaria";
 "event_save_button" = "Guardar evento";
 "event_delete_button" = "Eliminar evento";
 "event_delete_confirm_title" = "Eliminar evento";
@@ -31,10 +35,12 @@
 
 "event_reminder_none" = "Sin recordatorio";
 "event_reminder_at_time" = "A la hora";
+"event_reminder_5_min" = "5 min antes";
 "event_reminder_15_min" = "15 min antes";
 "event_reminder_30_min" = "30 min antes";
 "event_reminder_1_hour" = "1 hora antes";
 "event_reminder_1_day" = "1 día antes";
+"notification_event_reminder_body" = "Evento próximo a las %@";
 
 "event_repeat_none" = "No repetir";
 "event_repeat_daily" = "Cada día";

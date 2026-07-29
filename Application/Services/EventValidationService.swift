@@ -22,6 +22,12 @@ enum EventValidationIssue: Equatable, Sendable {
     /// Event date is not finite / usable.
     case invalidDate
 
+    /// End date is missing required ordering relative to the start date.
+    case invalidEndDate
+
+    /// Time zone identifier is not a known IANA zone.
+    case invalidTimeZone
+
     /// Reminder date is invalid relative to the event date.
     case invalidReminder
 
@@ -69,7 +75,12 @@ struct EventValidationService: Sendable {
 
         issues.append(contentsOf: validateTitle(event.title))
         issues.append(contentsOf: validateDescription(event.description))
-        issues.append(contentsOf: validateDates(eventDate: event.date, reminder: event.reminder))
+        issues.append(contentsOf: validateDates(
+            eventDate: event.date,
+            endDate: event.endDate,
+            reminder: event.reminder
+        ))
+        issues.append(contentsOf: validateTimeZone(event.timeZoneIdentifier))
         issues.append(contentsOf: validateRepeatRule(event.repeatRule, eventDate: event.date))
 
         return issues
@@ -109,12 +120,23 @@ struct EventValidationService: Sendable {
         return [.descriptionTooLong(maximum: maximumDescriptionLength)]
     }
 
-    /// Validates the event date and optional reminder.
-    private func validateDates(eventDate: Date, reminder: Date?) -> [EventValidationIssue] {
+    /// Validates the event start, optional end, and optional reminder.
+    private func validateDates(
+        eventDate: Date,
+        endDate: Date?,
+        reminder: Date?
+    ) -> [EventValidationIssue] {
         var issues: [EventValidationIssue] = []
 
         if eventDate.timeIntervalSinceReferenceDate.isFinite == false {
             issues.append(.invalidDate)
+        }
+
+        if let endDate {
+            let endIsFinite = endDate.timeIntervalSinceReferenceDate.isFinite
+            if endIsFinite == false || endDate < eventDate {
+                issues.append(.invalidEndDate)
+            }
         }
 
         if let reminder {
@@ -127,6 +149,14 @@ struct EventValidationService: Sendable {
         }
 
         return issues
+    }
+
+    /// Validates the stored IANA time zone identifier.
+    private func validateTimeZone(_ identifier: String) -> [EventValidationIssue] {
+        guard EventTimeZone.isValidIdentifier(identifier) else {
+            return [.invalidTimeZone]
+        }
+        return []
     }
 
     /// Validates a recurrence rule without expanding occurrences.

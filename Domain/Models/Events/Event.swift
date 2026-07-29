@@ -23,8 +23,17 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
     /// Optional longer description.
     var description: String
 
-    /// Date and time of the event.
+    /// Start date and time of the event (absolute instant).
     var date: Date
+
+    /// Optional end date and time (absolute instant). `nil` means no explicit end.
+    var endDate: Date?
+
+    /// IANA time zone identifier used when the schedule was edited.
+    ///
+    /// Stored for CloudKit / multi-device display. Absolute `date` / `endDate`
+    /// values remain timezone-independent Foundation instants.
+    var timeZoneIdentifier: String
 
     /// Optional reminder fire date.
     var reminder: Date?
@@ -61,7 +70,9 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
     ///   - id: Unique identifier.
     ///   - title: Event title.
     ///   - description: Event description.
-    ///   - date: Event date.
+    ///   - date: Start date and time.
+    ///   - endDate: Optional end date and time.
+    ///   - timeZoneIdentifier: IANA time zone id. Defaults to the current zone.
     ///   - reminder: Optional reminder date.
     ///   - repeatRule: Recurrence rule.
     ///   - category: Category.
@@ -75,6 +86,8 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
         title: String,
         description: String = "",
         date: Date,
+        endDate: Date? = nil,
+        timeZoneIdentifier: String = TimeZone.current.identifier,
         reminder: Date? = nil,
         repeatRule: RepeatRule = .none,
         category: EventCategory = .other,
@@ -88,6 +101,8 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
         self.title = title
         self.description = description
         self.date = date
+        self.endDate = endDate
+        self.timeZoneIdentifier = timeZoneIdentifier
         self.reminder = reminder
         self.repeatRule = repeatRule
         self.category = category
@@ -119,11 +134,25 @@ extension Event {
     /// - Returns: Independent event copy suitable for ``EventPersistenceService/create(_:)``.
     func duplicated(on date: Date? = nil) -> Event {
         let now = Date()
+        let start = date ?? self.date
+        let resolvedEnd: Date? = {
+            guard let endDate else {
+                return nil
+            }
+            guard let date else {
+                return endDate
+            }
+            let duration = endDate.timeIntervalSince(self.date)
+            return start.addingTimeInterval(duration)
+        }()
+
         return Event(
             id: UUID(),
             title: title,
             description: description,
-            date: date ?? self.date,
+            date: start,
+            endDate: resolvedEnd,
+            timeZoneIdentifier: timeZoneIdentifier,
             reminder: reminder,
             repeatRule: repeatRule,
             category: category,
@@ -133,5 +162,32 @@ extension Event {
             createdAt: now,
             updatedAt: now
         )
+    }
+}
+
+// MARK: - Local Reminder Helpers
+
+extension Event {
+
+    /// Builds the stable local-notification identifier for an event id.
+    /// - Parameter eventID: Event identifier.
+    /// - Returns: Notification request identifier.
+    static func reminderNotificationIdentifier(for eventID: UUID) -> String {
+        "galactic.event.reminder.\(eventID.uuidString)"
+    }
+
+    /// Stable local-notification identifier for this event's reminder.
+    var reminderNotificationIdentifier: String {
+        Self.reminderNotificationIdentifier(for: id)
+    }
+
+    /// `true` when ``reminder`` exists and is strictly after `now`.
+    /// - Parameter now: Reference instant. Defaults to the current date.
+    /// - Returns: Whether a local notification should be scheduled.
+    func shouldScheduleReminder(relativeTo now: Date = Date()) -> Bool {
+        guard let reminder else {
+            return false
+        }
+        return reminder > now
     }
 }

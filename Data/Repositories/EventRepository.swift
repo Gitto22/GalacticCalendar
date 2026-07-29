@@ -6,24 +6,12 @@
 import Foundation
 import SwiftData
 
-/// Errors produced by ``EventRepository``.
-enum EventRepositoryError: Error, Equatable, Sendable {
-
-    // MARK: - Cases
-
-    /// No persistence entity exists for the requested identifier.
-    case notFound(UUID)
-
-    /// A save operation failed.
-    case saveFailed
-}
-
 /// SwiftData-backed imperative repository for ``Event``.
 ///
 /// ## Role
 /// Translates between Domain ``Event`` and ``EventEntity``.
 /// This type is **not** the UI source of truth — ``EventPersistenceService``
-/// owns the reactive in-memory catalog observed by ViewModels.
+/// publishes into ``EventCatalogService`` for ViewModels.
 ///
 /// ## CloudKit
 /// Keep enum fields as raw strings so the same entities remain sync-friendly.

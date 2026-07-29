@@ -21,6 +21,7 @@ enum EventEditorMode: Equatable, Sendable {
 ///
 /// ## Responsibilities
 /// - Expose editable event fields to SwiftUI through Observation (`@Observable`).
+/// - Own schedule composition (day, start time, end time, time zone).
 /// - Validate drafts via ``EventValidationService``.
 /// - Persist create/update/delete operations via ``EventPersistenceService``.
 ///
@@ -28,14 +29,6 @@ enum EventEditorMode: Equatable, Sendable {
 /// - No SwiftUI views.
 /// - No direct SwiftData access.
 /// - No direct ``EventEntity`` access.
-///
-/// ## Architecture
-/// Lives in the Presentation layer (MVVM) and depends only on Application services,
-/// preserving Clean Architecture boundaries.
-///
-/// Mutations go through ``EventPersistenceService``, which refreshes its reactive
-/// ``EventPersistenceService/events`` catalog (single source of truth).
-/// ``CalendarGridViewModel`` and ``DayEventsViewModel`` derive UI state from that catalog.
 @MainActor
 @Observable
 final class EventEditorViewModel {
@@ -56,10 +49,24 @@ final class EventEditorViewModel {
     /// User-facing event description / notes.
     var description: String = ""
 
-    /// Date and time of the event.
+    /// Start date and time of the event.
     ///
-    /// Required by the Domain ``Event`` model when creating or updating.
-    var date: Date = Date()
+    /// When the start changes, ``reminder`` is recomputed and ``endDate`` keeps
+    /// the previous duration relative to the start.
+    var date: Date = Date() {
+        didSet {
+            let previousDuration = endDate.timeIntervalSince(oldValue)
+            let duration = previousDuration > 0 ? previousDuration : Self.defaultDuration
+            endDate = date.addingTimeInterval(duration)
+            reminder = reminderOption.reminderDate(relativeTo: date)
+        }
+    }
+
+    /// End date and time of the event.
+    var endDate: Date = Date()
+
+    /// IANA time zone identifier used while editing the schedule.
+    var timeZoneIdentifier: String = TimeZone.current.identifier
 
     /// Reminder offset selected in the editor UI.
     ///
@@ -74,8 +81,6 @@ final class EventEditorViewModel {
     private(set) var reminder: Date?
 
     /// Recurrence rule applied to the event.
-    ///
-    /// Bound to the approved editor presets via ``RepeatRule/editorSelectableRules``.
     var repeatRule: RepeatRule = .none
 
     /// Selected event category.
@@ -119,7 +124,7 @@ final class EventEditorViewModel {
     /// - Parameters:
     ///   - persistenceService: Persistence façade for event CRUD.
     ///   - validationService: Validator for draft events.
-    ///   - initialDate: Default date for a new event draft.
+    ///   - initialDate: Default start date for a new event draft.
     ///   - event: Optional existing event that puts the editor in edit mode.
     init(
         persistenceService: EventPersistenceService,
@@ -130,6 +135,7 @@ final class EventEditorViewModel {
         self.persistenceService = persistenceService
         self.validationService = validationService
         self.date = initialDate
+        self.endDate = initialDate.addingTimeInterval(Self.defaultDuration)
         self.reminder = EventReminderOption.fifteenMinutes.reminderDate(relativeTo: initialDate)
 
         if let event {
@@ -137,14 +143,32 @@ final class EventEditorViewModel {
         }
     }
 
+    // MARK: - Schedule Presentation
+
+    /// Localized display name for the selected time zone.
+    var timeZoneDisplayName: String {
+        EventTimeZone.displayName(for: timeZoneIdentifier)
+    }
+
+    /// Identifiers available in the timezone selector.
+    var selectableTimeZoneIdentifiers: [String] {
+        var identifiers = EventTimeZone.editorSelectableIdentifiers
+        if identifiers.contains(timeZoneIdentifier) == false {
+            identifiers.insert(timeZoneIdentifier, at: 0)
+        }
+        return identifiers
+    }
+
     // MARK: - Mode Configuration
 
     /// Prepares the ViewModel to create a new event.
-    /// - Parameter date: Initial date assigned to the new event.
+    /// - Parameter date: Initial start date assigned to the new event.
     func prepareForCreation(on date: Date = Date()) {
         reset()
         mode = .create
         self.date = date
+        endDate = date.addingTimeInterval(Self.defaultDuration)
+        timeZoneIdentifier = TimeZone.current.identifier
         reminderOption = .fifteenMinutes
     }
 
@@ -156,7 +180,9 @@ final class EventEditorViewModel {
         editingCreatedAt = event.createdAt
         title = event.title
         description = event.description
+        timeZoneIdentifier = event.timeZoneIdentifier
         date = event.date
+        endDate = event.endDate ?? event.date.addingTimeInterval(Self.defaultDuration)
         reminderOption = EventReminderOption.option(for: event.reminder, eventDate: event.date)
         repeatRule = event.repeatRule
         category = event.category
@@ -168,12 +194,17 @@ final class EventEditorViewModel {
         didCompleteMutation = false
     }
 
+    // MARK: - Notifications
+
+    /// Requests local-notification permission when still undetermined.
+    @discardableResult
+    func requestNotificationAuthorizationIfNeeded() async -> Bool {
+        await persistenceService.requestNotificationAuthorizationIfNeeded()
+    }
+
     // MARK: - Validation
 
     /// Validates the current form through ``EventValidationService``.
-    ///
-    /// Updates ``validationIssues`` with every detected problem.
-    /// - Returns: `true` when the draft is valid; otherwise `false`.
     @discardableResult
     func validate() -> Bool {
         let draft = makeDraftEvent()
@@ -196,9 +227,6 @@ final class EventEditorViewModel {
     // MARK: - Create
 
     /// Creates a new event from the current form values.
-    ///
-    /// Runs local validation first, then calls ``EventPersistenceService/create(_:)``.
-    /// No-ops when the editor is not in ``EventEditorMode/create``.
     func createEvent() async {
         guard mode == .create else {
             return
@@ -216,9 +244,6 @@ final class EventEditorViewModel {
     // MARK: - Update
 
     /// Updates the event currently loaded for editing.
-    ///
-    /// Runs local validation first, then calls ``EventPersistenceService/update(_:)``.
-    /// No-ops when the editor is not in ``EventEditorMode/edit``.
     func updateEvent() async {
         guard mode == .edit, editingEventID != nil else {
             return
@@ -236,9 +261,6 @@ final class EventEditorViewModel {
     // MARK: - Delete
 
     /// Deletes the event currently loaded for editing.
-    ///
-    /// Calls ``EventPersistenceService/delete(id:)``.
-    /// No-ops when no editable event is loaded.
     func deleteEvent() async {
         guard mode == .edit, let editingEventID else {
             return
@@ -252,10 +274,6 @@ final class EventEditorViewModel {
     // MARK: - Duplicate
 
     /// Creates a persisted duplicate of the event currently loaded for editing.
-    ///
-    /// Prepared for UI surfaces that expose a Duplicate action.
-    /// No-ops when the editor is not in ``EventEditorMode/edit``.
-    /// - Returns: The duplicated event when successful; otherwise `nil`.
     @discardableResult
     func duplicateEvent() async -> Event? {
         guard mode == .edit else {
@@ -281,7 +299,9 @@ final class EventEditorViewModel {
         editingCreatedAt = nil
         title = ""
         description = ""
+        timeZoneIdentifier = TimeZone.current.identifier
         date = Date()
+        endDate = date.addingTimeInterval(Self.defaultDuration)
         reminderOption = .fifteenMinutes
         reminder = reminderOption.reminderDate(relativeTo: date)
         repeatRule = .none
@@ -309,8 +329,10 @@ final class EventEditorViewModel {
 
     // MARK: - Private Helpers
 
+    /// Default event duration when no end date is stored (1 hour).
+    private static let defaultDuration: TimeInterval = 3_600
+
     /// Builds a Domain ``Event`` snapshot from the current form state.
-    /// - Returns: Draft event ready for validation or persistence.
     private func makeDraftEvent() -> Event {
         let now = Date()
         let resolvedReminder = reminderOption.reminderDate(relativeTo: date)
@@ -319,6 +341,8 @@ final class EventEditorViewModel {
             title: title,
             description: description,
             date: date,
+            endDate: endDate,
+            timeZoneIdentifier: timeZoneIdentifier,
             reminder: resolvedReminder,
             repeatRule: repeatRule,
             category: category,
@@ -331,7 +355,6 @@ final class EventEditorViewModel {
     }
 
     /// Executes a persistence mutation with shared loading and error handling.
-    /// - Parameter operation: Async throwing persistence work.
     private func performMutation(_ operation: () async throws -> Void) async {
         isSaving = true
         lastError = nil

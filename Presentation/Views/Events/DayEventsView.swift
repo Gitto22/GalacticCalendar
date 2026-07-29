@@ -194,49 +194,30 @@ struct DayEventsView: View {
 
 #if DEBUG
 #Preview("Day Events") {
+    let day = Date()
     let persistence = EventPersistenceService(
-        repository: PreviewDayEventsRepository()
+        repository: EventsPreviewRepository(
+            seed: [
+                Event(title: "Entrenamiento", date: day.addingTimeInterval(9 * 3600), color: .green),
+                Event(
+                    title: "Reunión",
+                    date: day.addingTimeInterval(12 * 3600),
+                    status: .inProgress,
+                    color: .orange
+                )
+            ]
+        )
     )
 
     DayEventsView(
         viewModel: DayEventsViewModel(
-            date: Date(),
+            date: day,
             persistenceService: persistence
         ),
         onDismiss: {}
     )
     .environment(ThemeManager())
     .environment(persistence)
-}
-
-@MainActor
-private final class PreviewDayEventsRepository: EventRepositoryProtocol {
-
-    func create(_ event: Event) async throws {}
-
-    func fetchAll() async throws -> [Event] { [] }
-
-    func fetch(by id: UUID) async throws -> Event? { nil }
-
-    func fetch(on date: Date) async throws -> [Event] {
-        [
-            Event(title: "Entrenamiento", date: date.addingTimeInterval(9 * 3600), color: .green),
-            Event(title: "Reunión", date: date.addingTimeInterval(12 * 3600), status: .inProgress, color: .orange)
-        ]
-    }
-
-    func fetch(in interval: DateInterval) async throws -> [Event] { [] }
-
-    func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
-
-    func fetchRecurring() async throws -> [Event] { [] }
-
-    func update(_ event: Event) async throws {}
-
-    func delete(_ event: Event) async throws {}
-
-    func delete(id: UUID) async throws {}
-
-    func duplicate(_ event: Event) async throws -> Event { event.duplicated() }
+    .task { await persistence.bootstrap() }
 }
 #endif
