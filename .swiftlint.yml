@@ -1,0 +1,32 @@
+﻿# Galactic Calendar — SwiftLint configuration scaffold
+# Rules will be refined when implementation begins.
+
+disabled_rules:
+  - todo
+
+opt_in_rules:
+  - empty_count
+  - explicit_self
+  - force_unwrapping
+  - implicitly_unwrapped_optional
+
+line_length:
+  warning: 120
+  error: 200
+
+file_length:
+  warning: 400
+  error: 800
+
+type_body_length:
+  warning: 300
+  error: 500
+
+identifier_name:
+  min_length: 2
+  max_length: 60
+
+excluded:
+  - Pods
+  - .build
+  - DerivedData
