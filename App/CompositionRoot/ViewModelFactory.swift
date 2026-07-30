@@ -5,7 +5,23 @@
 
 import Foundation
 
-/// Factory for constructing Presentation ViewModels from the Composition Root.
+/// Constructs Presentation ViewModels from the Composition Root.
+///
+/// # Scope (certified QA-07)
+/// Factory builds **screen entry** ViewModels owned by `RootView`:
+/// - ``HomeViewModel`` (+ nested Universe card + search)
+/// - ``CalendarGridViewModel``
+/// - ``UniverseMessageViewModel`` (also nested under Home)
+///
+/// **Child / modal** ViewModels (`DayEvents`, `EventEditor`, Templates,
+/// `SmartAgenda`, pickers) are created by their parent screen coordinator,
+/// reusing the same Application façades already injected — not a second
+/// Composition Root. Universe History/Detail receive Domain **protocols**
+/// via closures defined here so Infrastructure concretes never appear in Views.
+///
+/// # Lifecycle
+/// Stateless wrapper; safe to instantiate per bootstrap. Dependencies come
+/// exclusively from the bound ``DependencyContainer``.
 @MainActor
 final class ViewModelFactory {
 
@@ -62,7 +78,7 @@ final class ViewModelFactory {
     // MARK: - Calendar
 
     /// Builds a ``CalendarGridViewModel`` bound to the reactive event catalog.
-    /// - Parameter engine: Optional calendar engine override.
+    /// - Parameter engine: Optional calendar engine override (stateless; default new instance).
     /// - Returns: Configured grid ViewModel.
     func makeCalendarGridViewModel(
         engine: CalendarEngine = CalendarEngine()

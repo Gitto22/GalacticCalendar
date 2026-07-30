@@ -70,6 +70,8 @@ struct SmartAgendaView: View {
             .padding(.horizontal, Spacing.pageHorizontal)
             .padding(.top, Spacing.md)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("smart_agenda_screen")
         .task {
             await viewModel.bootstrap()
         }
@@ -137,6 +139,7 @@ struct SmartAgendaView: View {
                 viewModel.presentNewEvent()
             }
             .accessibilityLabel(Text(String(localized: "day_events_new_event")))
+            .accessibilityIdentifier("agenda_add_event")
 
             GlassCircleButton(
                 systemImage: Icons.Navigation.close,
@@ -147,6 +150,7 @@ struct SmartAgendaView: View {
                 onDismiss()
             }
             .accessibilityLabel(Text(String(localized: "agenda_close")))
+            .accessibilityIdentifier("agenda_close")
         }
     }
 

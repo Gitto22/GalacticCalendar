@@ -36,7 +36,7 @@ struct FlowTagPicker: View {
                             Capsule(style: .continuous)
                                 .fill(
                                     isSelected(preset)
-                                        ? ColorPalette.editorAccent.opacity(0.35)
+                                        ? ColorPalette.editorAccent.opacity(ColorPalette.glassStrokeSubtleOpacity)
                                         : ColorPalette.editorTileFill
                                 )
                         }

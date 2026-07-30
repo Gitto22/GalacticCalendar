@@ -84,7 +84,19 @@ struct CalendarGridView: View {
         }
         .buttonStyle(.plain)
         .disabled(day.isCurrentMonth == false)
+        .accessibilityIdentifier(Self.dayAccessibilityIdentifier(for: day))
         .id(CalendarDayRefreshIdentity.token(for: day))
+    }
+
+    /// Stable UI-test identifier for an in-month day (`calendar_day_today` / `calendar_day_N`).
+    private static func dayAccessibilityIdentifier(for day: CalendarDay) -> String {
+        guard day.isCurrentMonth else {
+            return "calendar_day_outside"
+        }
+        if day.isToday {
+            return "calendar_day_today"
+        }
+        return "calendar_day_\(day.dayNumber)"
     }
 
     // MARK: - Period

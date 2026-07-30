@@ -25,9 +25,13 @@ final class EventTemplateRepository: EventTemplateRepositoryProtocol {
         let descriptor = FetchDescriptor<EventTemplateEntity>(
             sortBy: [SortDescriptor(\.name, order: .forward)]
         )
-        return try modelContext.fetch(descriptor).map { entity in
-            try EventTemplateEntityMapper.makeDomain(from: entity)
-        }
+        let entities = try modelContext.fetch(descriptor)
+        return CatalogResilientDecoder.decodeAll(
+            entities,
+            entityType: "EventTemplateEntity",
+            id: \.id,
+            decode: EventTemplateEntityMapper.makeDomain(from:)
+        ).values
     }
 
     func fetch(by id: UUID) async throws -> EventTemplate? {

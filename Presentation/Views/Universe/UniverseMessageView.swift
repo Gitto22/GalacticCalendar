@@ -31,7 +31,7 @@ struct UniverseMessageView: View {
         ShareLink(item: shareText) {
             Image(systemName: Icons.Universe.share)
                 .font(Typography.subheadline)
-                .foregroundStyle(ColorPalette.onImageAccent.opacity(0.85))
+                .foregroundStyle(ColorPalette.onImageAccent.opacity(ColorPalette.onImagePrimaryMutedOpacity))
                 .frame(minWidth: Spacing.lg, minHeight: Spacing.lg)
                 .contentShape(Rectangle())
         }

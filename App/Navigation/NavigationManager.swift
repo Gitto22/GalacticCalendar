@@ -6,17 +6,19 @@
 import Foundation
 import SwiftUI
 
-/// Owns the navigation stack used by the application shell.
+/// Owns a reserved ``NavigationPath`` for future shell push routing.
 ///
-/// Presentation layers mutate navigation exclusively through this type
-/// to keep routing concerns out of feature views.
+/// ## Private Beta (QA-06)
+/// Not used by product screens. Feature navigation is modal
+/// (`fullScreenCover` / `sheet`). This type remains in the Composition Root
+/// so deep-link / Settings push can attach later without a second pattern.
 @MainActor
 @Observable
 final class NavigationManager {
 
     // MARK: - Properties
 
-    /// Navigation path driving the root ``NavigationStack``.
+    /// Reserved navigation path for future push destinations.
     var path = NavigationPath()
 
     // MARK: - Stack Operations

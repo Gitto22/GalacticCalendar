@@ -133,6 +133,7 @@ struct EventEditorView: View {
             Button(String(localized: "event_delete_confirm_action"), role: .destructive) {
                 Task { await viewModel.deleteEvent() }
             }
+            .accessibilityIdentifier("event_editor_delete_confirm")
             Button(String(localized: "event_delete_cancel"), role: .cancel) {}
         } message: {
             Text(String(localized: "event_delete_confirm_message"))

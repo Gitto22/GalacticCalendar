@@ -52,7 +52,12 @@ final class EventRepository: EventRepositoryProtocol {
             sortBy: [SortDescriptor(\.date, order: .forward)]
         )
         let entities = try modelContext.fetch(descriptor)
-        return try entities.map(EventEntityMapper.makeDomain(from:))
+        return CatalogResilientDecoder.decodeAll(
+            entities,
+            entityType: "EventEntity",
+            id: \.id,
+            decode: EventEntityMapper.makeDomain(from:)
+        ).values
     }
 
     func fetch(by id: UUID) async throws -> Event? {
@@ -84,7 +89,13 @@ final class EventRepository: EventRepositoryProtocol {
             sortBy: [SortDescriptor(\.date, order: .forward)]
         )
         let entities = try modelContext.fetch(descriptor)
-        return try entities.map(EventEntityMapper.makeDomain(from:))
+        // Catalog / interval loads isolate corrupt rows (QA-03); single-id fetch still throws.
+        return CatalogResilientDecoder.decodeAll(
+            entities,
+            entityType: "EventEntity",
+            id: \.id,
+            decode: EventEntityMapper.makeDomain(from:)
+        ).values
     }
 
     /// Fetches events in `interval` grouped by start-of-day.

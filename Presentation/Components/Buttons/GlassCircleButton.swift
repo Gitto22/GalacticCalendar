@@ -83,7 +83,7 @@ struct GlassCircleButton<Label: View>: View {
                     GlassEffectModifier(
                         intensity: .subtle,
                         shapeStyle: .circle,
-                        cornerRadius: 0,
+                        cornerRadius: Spacing.Radius.none,
                         showsGlow: showsGlow
                     )
                 )

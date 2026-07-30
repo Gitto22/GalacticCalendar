@@ -48,6 +48,8 @@ struct DayEventsView: View {
             .padding(.top, Spacing.md)
             .padding(.bottom, Spacing.pageVertical)
         }
+        .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("day_events_screen")
         .fullScreenCover(
             isPresented: $viewModel.isPresentingEventEditor,
             onDismiss: {

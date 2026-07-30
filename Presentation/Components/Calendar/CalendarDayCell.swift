@@ -75,9 +75,13 @@ struct CalendarDayCell: View {
         self.eventColors = day.eventColors
         self.eventCount = day.eventCount
         self.accessibilitySummary = Self.makeAccessibilitySummary(for: day)
-        self.dayAccessibilityIdentifier = day.isCurrentMonth
-            ? "calendar_day_\(day.id)"
-            : nil
+        if day.isCurrentMonth == false {
+            self.dayAccessibilityIdentifier = nil
+        } else if day.isToday {
+            self.dayAccessibilityIdentifier = "calendar_day_today"
+        } else {
+            self.dayAccessibilityIdentifier = "calendar_day_\(day.dayNumber)"
+        }
     }
 
     /// Creates a day cell from explicit presentation values.

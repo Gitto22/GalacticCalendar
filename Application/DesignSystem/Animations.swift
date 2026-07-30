@@ -6,6 +6,9 @@
 import SwiftUI
 
 /// Reusable animation tokens for Galactic Calendar.
+///
+/// Prefer ``Motion`` for calendar chrome (month change, selection, backgrounds).
+/// Prefer these tokens for editor / generic control feedback.
 enum Animations {
 
     // MARK: - Durations

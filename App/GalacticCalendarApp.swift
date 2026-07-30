@@ -22,12 +22,13 @@ struct GalacticCalendarApp: App {
             rootContent
                 .environment(container)
                 .environment(container.appConfiguration)
-                .environment(container.navigationManager)
-                .environment(container.appRouter)
                 .environment(container.themeManager)
                 .environment(container.calendarAppearanceManager)
                 .environment(container.eventPersistenceService)
                 .environment(container.eventTemplateService)
+                // NavigationManager / AppRouter stay on the container (QA-06
+                // reserved push stack) but are not Environment-injected until
+                // product navigation consumes them (QA-07).
         }
     }
 

@@ -173,7 +173,11 @@ final class EventPersistenceService {
     /// Reloads the catalog from the repository and publishes to observers.
     ///
     /// Used for first load and after mutations. (Former `bootstrap()` alias removed in PB-05.3.)
-    /// - Throws: ``EventPersistenceError/catalogLoadFailed`` when loading fails.
+    ///
+    /// Undecodable rows are isolated in ``EventRepository/fetchAll()`` (logged, skipped);
+    /// this method still publishes whatever healthy masters remain — it does not fail the
+    /// whole catalog because of a single corrupt entity (QA-03).
+    /// - Throws: ``EventPersistenceError/catalogLoadFailed`` when the store fetch itself fails.
     func refresh() async throws {
         do {
             let fetched = try await repository.fetchAll()

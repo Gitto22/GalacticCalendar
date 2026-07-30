@@ -111,6 +111,8 @@ struct HomeHeaderView: View {
                         systemImage: Icons.Home.universeMessage
                     )
                 }
+                .accessibilityIdentifier("home_menu_history")
+
                 if onSearchTap != nil {
                     Button {
                         onSearchTap?()
@@ -120,6 +122,7 @@ struct HomeHeaderView: View {
                             systemImage: Icons.Universe.search
                         )
                     }
+                    .accessibilityIdentifier("home_menu_search")
                 }
                 if onAgendaTap != nil {
                     Button {
@@ -130,6 +133,7 @@ struct HomeHeaderView: View {
                             systemImage: Icons.Home.agenda
                         )
                     }
+                    .accessibilityIdentifier("home_menu_agenda")
                 }
             } label: {
                 Image(systemName: Icons.Navigation.menu)
@@ -140,7 +144,7 @@ struct HomeHeaderView: View {
                         GlassEffectModifier(
                             intensity: .subtle,
                             shapeStyle: .circle,
-                            cornerRadius: 0,
+                            cornerRadius: Spacing.Radius.none,
                             showsGlow: false
                         )
                     )

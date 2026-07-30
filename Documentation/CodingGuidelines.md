@@ -1,19 +1,5 @@
 ﻿# Coding Guidelines
 
-- Swift 6
-- SwiftUI
-- SwiftData
-- CloudKit
-- WidgetKit
-- StoreKit 2
-- UserNotifications
-- App Intents
-- MVVM + Clean Architecture
-- SOLID
-- Apple Human Interface Guidelines
-- SwiftLint-friendly
-- Documentation comments with `///`
-- Organization with `// MARK:`
-- No duplicated code
-- Reusable components
-- Do not invent screens or features without explicit instruction
+**Canonical standards:** see [`CodingStandards.md`](CodingStandards.md).
+
+This file remains as a redirect so older sprint links keep working. Do not treat the historical bullet list (CloudKit / WidgetKit / StoreKit as first-class shipping stack) as current product scope — those modules are scaffolded only for Private Beta.

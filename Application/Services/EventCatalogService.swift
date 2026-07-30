@@ -16,6 +16,8 @@ import Foundation
 /// - No validation.
 /// - No notification scheduling.
 /// - No physical occurrence persistence.
+/// - No corruption handling — ``EventRepository/fetchAll()`` already isolates
+///   undecodable rows (QA-03) before ``replaceAll(with:)``.
 ///
 /// ``EventPersistenceService`` mutates storage, then replaces this catalog.
 @MainActor

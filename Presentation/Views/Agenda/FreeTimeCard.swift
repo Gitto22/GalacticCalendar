@@ -13,9 +13,9 @@ struct FreeTimeCard: View {
 
     var body: some View {
         HStack(spacing: Spacing.sm) {
-            RoundedRectangle(cornerRadius: 2, style: .continuous)
-                .fill(ColorPalette.editorAccent.opacity(0.45))
-                .frame(width: 3)
+            RoundedRectangle(cornerRadius: Spacing.Radius.xxs, style: .continuous)
+                .fill(ColorPalette.editorAccent.opacity(ColorPalette.glassStrokeRegularOpacity))
+                .frame(width: Spacing.accentBarWidth)
                 .padding(.vertical, Spacing.xxxs)
 
             VStack(alignment: .leading, spacing: Spacing.xxxs) {
@@ -40,7 +40,10 @@ struct FreeTimeCard: View {
                 RoundedRectangle(cornerRadius: Spacing.Radius.md, style: .continuous)
                     .stroke(
                         ColorPalette.separator.opacity(ColorPalette.glassStrokeSubtleOpacity),
-                        style: StrokeStyle(lineWidth: 1, dash: [4, 4])
+                        style: StrokeStyle(
+                            lineWidth: Spacing.hairline,
+                            dash: [Spacing.xxs, Spacing.xxs]
+                        )
                     )
             }
         .accessibilityElement(children: .combine)

@@ -44,4 +44,13 @@ enum PersistenceLog {
     static func writeBlocked(operation: String) {
         logger.error("Write blocked (\(operation, privacy: .public)): storage not available")
     }
+
+    /// Logs that a persisted row was isolated during catalog load (corrupt / undecodable).
+    ///
+    /// Does not invent domain values; the row remains on disk and healthy rows still load.
+    static func corruptEntitySkipped(entityType: String, id: UUID, error: Error) {
+        logger.error(
+            "Isolated corrupt \(entityType, privacy: .public) id=\(id.uuidString, privacy: .public) error=\(String(describing: error), privacy: .public)"
+        )
+    }
 }

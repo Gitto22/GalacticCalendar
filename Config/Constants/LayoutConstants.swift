@@ -30,7 +30,7 @@ enum LayoutConstants {
     static let dayHighlightStroke: CGFloat = Spacing.headerControlStroke
 
     /// Stroke width for the default day cell border.
-    static let dayCellBorderStroke: CGFloat = 1
+    static let dayCellBorderStroke: CGFloat = Spacing.hairline
 
     /// Minimum day-cell height on compact width devices.
     static let dayCellMinHeightCompact: CGFloat = Spacing.xxl

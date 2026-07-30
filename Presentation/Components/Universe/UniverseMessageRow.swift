@@ -129,7 +129,7 @@ struct UniverseMessageRow: View {
                 .foregroundStyle(
                     item.isFavorite
                         ? ColorPalette.universeAccent
-                        : ColorPalette.onImageAccent.opacity(0.45)
+                        : ColorPalette.onImageAccent.opacity(ColorPalette.glassStrokeRegularOpacity)
                 )
                 .frame(minWidth: Spacing.lg, minHeight: Spacing.lg)
                 .contentShape(Rectangle())

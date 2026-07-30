@@ -6,7 +6,37 @@
 import Foundation
 import SwiftData
 
-/// Composition Root that wires infrastructure and persistence dependencies.
+/// Composition Root: single owner of app-scoped dependencies.
+///
+/// # Role
+/// Created **once** at launch (`GalacticCalendarApp`) and injected via
+/// `@Environment(DependencyContainer.self)`. All long-lived services and
+/// repositories are constructed here — Views must not open SwiftData stores
+/// or instantiate Infrastructure types directly (previews/tests excepted).
+///
+/// # What Presentation receives
+/// | Surface | Type | Notes |
+/// |---|---|---|
+/// | `eventPersistenceService` | `EventPersistenceService` | Application façade (Environment) |
+/// | `eventTemplateService` | `EventTemplateService` | Application façade (Environment) |
+/// | `themeManager` / `calendarAppearanceManager` | Application | Environment |
+/// | `appConfiguration` | Application | Environment |
+/// | Screen VMs | via ``ViewModelFactory`` | Home, grid, Universe card |
+/// | Universe child VMs | Domain **protocols** via factory closures | No concrete repo types |
+///
+/// Concrete `EventRepository` / `EventTemplateRepository` /
+/// `NotificationRepository` are **not** stored as public properties —
+/// they are wired into Application façades and discarded from the public graph.
+/// `NotificationService` stays **private** (forwarded into persistence).
+///
+/// # Lifecycle
+/// Process-scoped. Child ViewModels share these instances. Do not create a
+/// second container in production UI.
+///
+/// # Reserved (not Environment-injected)
+/// `navigationManager` / `appRouter` remain owned here for a future push stack
+/// (QA-06). They are **not** placed in the Environment until product navigation
+/// uses them.
 @MainActor
 @Observable
 final class DependencyContainer {
@@ -16,12 +46,12 @@ final class DependencyContainer {
     /// Application configuration façade.
     let appConfiguration: AppConfiguration
 
-    // MARK: - Navigation
+    // MARK: - Navigation (reserved — not Environment-injected)
 
-    /// Navigation stack owner.
+    /// Navigation stack owner (future push / deep link).
     let navigationManager: NavigationManager
 
-    /// High-level navigation coordinator.
+    /// High-level navigation coordinator (future typed routes).
     let appRouter: AppRouter
 
     // MARK: - Appearance
@@ -56,10 +86,10 @@ final class DependencyContainer {
 
     // MARK: - Universe Messages
 
-    /// Catalog repository (sole data access for Universe Messages).
+    /// Catalog repository (protocol surface for Universe ViewModels via factory).
     let universeMessageRepository: any UniverseMessageRepositoryProtocol
 
-    /// Day-selection engine.
+    /// Day-selection engine (app-scoped; shared with Home / Universe card).
     let universeMessageEngine: UniverseMessageEngine
 
     /// Application service for catalog mutations (favorites).
@@ -90,7 +120,9 @@ final class DependencyContainer {
         let notificationService = NotificationService(repository: notificationRepository)
         self.notificationService = notificationService
 
+        // Explicit Composition Root collaborators for EventPersistenceService.
         let catalog = EventCatalogService()
+        let validation = EventValidationService()
 
         let openedContainer: ModelContainer?
         let availability: StorageAvailability
@@ -114,11 +146,16 @@ final class DependencyContainer {
         self.storageAvailability = availability
         self.persistenceLaunchError = launchError
 
+        let availabilityProvider: () -> StorageAvailability = { [weak self] in
+            self?.storageAvailability ?? .unavailable
+        }
+
         if let openedContainer {
             let eventRepository = EventRepository(modelContext: openedContainer.mainContext)
             self.eventPersistenceService = EventPersistenceService(
                 repository: eventRepository,
                 catalog: catalog,
+                validationService: validation,
                 notificationService: notificationService,
                 storageAvailability: .available
             )
@@ -132,9 +169,7 @@ final class DependencyContainer {
             self.universeMessageService = UniverseMessageService(
                 repository: universeRepository,
                 engine: universeEngine,
-                storageAvailabilityProvider: { [weak self] in
-                    self?.storageAvailability ?? .unavailable
-                }
+                storageAvailabilityProvider: availabilityProvider
             )
 
             let templateRepository = EventTemplateRepository(
@@ -142,14 +177,13 @@ final class DependencyContainer {
             )
             self.eventTemplateService = EventTemplateService(
                 repository: templateRepository,
-                storageAvailabilityProvider: { [weak self] in
-                    self?.storageAvailability ?? .unavailable
-                }
+                storageAvailabilityProvider: availabilityProvider
             )
         } else {
             self.eventPersistenceService = EventPersistenceService(
                 repository: UnavailableEventRepository(),
                 catalog: catalog,
+                validationService: validation,
                 notificationService: notificationService,
                 storageAvailability: .unavailable
             )
@@ -161,16 +195,12 @@ final class DependencyContainer {
             self.universeMessageService = UniverseMessageService(
                 repository: universeRepository,
                 engine: universeEngine,
-                storageAvailabilityProvider: { [weak self] in
-                    self?.storageAvailability ?? .unavailable
-                }
+                storageAvailabilityProvider: availabilityProvider
             )
 
             self.eventTemplateService = EventTemplateService(
                 repository: UnavailableEventTemplateRepository(),
-                storageAvailabilityProvider: { [weak self] in
-                    self?.storageAvailability ?? .unavailable
-                }
+                storageAvailabilityProvider: availabilityProvider
             )
         }
     }

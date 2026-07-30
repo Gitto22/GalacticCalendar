@@ -185,10 +185,10 @@ struct EventRow: View {
                     .font(Typography.caption2)
                     .foregroundStyle(ColorPalette.onImageAccent)
                     .padding(.horizontal, Spacing.xxs)
-                    .padding(.vertical, 1)
+                    .padding(.vertical, Spacing.hairline)
                     .background {
                         Capsule(style: .continuous)
-                            .fill(ColorPalette.editorAccent.opacity(0.2))
+                            .fill(ColorPalette.editorAccent.opacity(ColorPalette.tagChipFillOpacity))
                     }
             }
             if event.tags.count > visibleTags.count {

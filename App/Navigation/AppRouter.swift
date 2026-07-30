@@ -5,17 +5,19 @@
 
 import Foundation
 
-/// High-level navigation coordinator for Galactic Calendar.
+/// Reserved high-level coordinator for future shell push intents.
 ///
-/// Translates application-level navigation intents into
-/// ``NavigationManager`` stack operations.
+/// ## Private Beta (QA-06)
+/// Product flows do not call this type. Prefer ViewModel-owned
+/// `present*` / `dismiss*` + modal modifiers. Kept wired in DI for later
+/// deep links without introducing parallel routers in features.
 @MainActor
 @Observable
 final class AppRouter {
 
     // MARK: - Properties
 
-    /// Low-level navigation stack manager.
+    /// Low-level navigation stack manager (reserved).
     let navigationManager: NavigationManager
 
     // MARK: - Lifecycle
@@ -28,12 +30,12 @@ final class AppRouter {
 
     // MARK: - Routing
 
-    /// Navigates to the application root.
+    /// Navigates to the application root (clears reserved push path).
     func showRoot() {
         navigationManager.popToRoot()
     }
 
-    /// Pushes a destination onto the stack.
+    /// Pushes a destination onto the reserved stack.
     /// - Parameter route: Destination to present.
     func navigate(to route: Route) {
         switch route {

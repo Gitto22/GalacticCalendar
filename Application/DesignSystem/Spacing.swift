@@ -39,6 +39,17 @@ enum Spacing {
     /// 64 pt spacing.
     static let xxxl: CGFloat = 64
 
+    // MARK: - Micro / strokes
+
+    /// 1 pt hairline (micro padding, default borders, dashed strokes).
+    static let hairline: CGFloat = 1
+
+    /// Width of vertical accent bars (e.g. free-time timeline marker).
+    static let accentBarWidth: CGFloat = 3
+
+    /// Stroke width for selected color / focus rings.
+    static let selectionStroke: CGFloat = 2
+
     // MARK: - Controls
 
     /// Diameter for circular Home header controls.
@@ -71,6 +82,12 @@ enum Spacing {
 
     /// Corner radius tokens shared across surfaces.
     enum Radius {
+
+        /// Square / circle glass paths (no corner rounding).
+        static let none: CGFloat = 0
+
+        /// 2 pt hairline corner (accent bars, micro chips).
+        static let xxs: CGFloat = 2
 
         /// 8 pt corner radius.
         static let sm: CGFloat = 8

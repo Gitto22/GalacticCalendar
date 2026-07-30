@@ -53,6 +53,7 @@ struct AgendaSummaryCard: View {
         .galacticGlassCard(.subtle, cornerRadius: Spacing.Radius.lg)
         .accessibilityElement(children: .combine)
         .accessibilityLabel(accessibilityLabel)
+        .accessibilityIdentifier(style == .header ? "agenda_summary_header" : "agenda_summary_end")
     }
 
     private var metricsRow: some View {

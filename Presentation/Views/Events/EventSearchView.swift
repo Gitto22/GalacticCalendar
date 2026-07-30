@@ -169,7 +169,7 @@ struct EventSearchView: View {
                                     viewModel.selectedColors.contains(color)
                                         ? ColorPalette.onImagePrimary
                                         : Color.clear,
-                                    lineWidth: 2
+                                    lineWidth: Spacing.selectionStroke
                                 )
                         }
                 }
@@ -243,7 +243,7 @@ struct EventSearchView: View {
                     Capsule(style: .continuous)
                         .fill(
                             isSelected
-                                ? ColorPalette.editorAccent.opacity(0.35)
+                                ? ColorPalette.editorAccent.opacity(ColorPalette.glassStrokeSubtleOpacity)
                                 : ColorPalette.editorTileFill
                         )
                 }

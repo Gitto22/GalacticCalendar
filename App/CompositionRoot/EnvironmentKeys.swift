@@ -14,13 +14,16 @@ enum AppEnvironmentKeys {
 
     // MARK: - Guidance
 
-    /// Lists the observable dependencies expected by the application shell.
+    /// Observable dependencies injected into the application Environment (QA-07).
+    ///
+    /// `NavigationManager` / `AppRouter` remain on ``DependencyContainer``
+    /// (reserved push stack, QA-06) but are **not** Environment-injected until
+    /// product navigation uses them.
     static let observableDependencies = [
         "DependencyContainer",
         "AppConfiguration",
-        "NavigationManager",
-        "AppRouter",
         "ThemeManager",
+        "CalendarAppearanceManager",
         "EventPersistenceService",
         "EventTemplateService"
     ]

@@ -5,15 +5,17 @@
 
 import SwiftUI
 
-/// Discrete SwiftUI animation tokens for Galactic Calendar.
+/// Discrete SwiftUI animation tokens for the Calendar Experience.
 ///
 /// Durations stay within 0.20…0.35s. Views own animation; ViewModels stay pure.
+/// Generic UI feedback uses ``Animations``; calendar chrome uses these named tokens.
+/// Shared durations reference ``Animations`` so timing stays single-sourced.
 enum Motion {
 
     // MARK: - Calendar Experience (Sprint 5.6)
 
     /// Month grid / period change (chevrons, swipe, today, pickers).
-    static let calendarMonthChange = Animation.easeInOut(duration: 0.28)
+    static let calendarMonthChange = Animation.easeInOut(duration: Animations.regularDuration)
 
     /// Selected / today day highlight indicator.
     static let calendarSelection = Animation.easeInOut(duration: 0.22)

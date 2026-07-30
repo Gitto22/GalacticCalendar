@@ -67,7 +67,7 @@ struct AgendaTimelineView: View {
                         width: LayoutConstants.eventColorDotSize,
                         height: LayoutConstants.eventColorDotSize
                     )
-                    .padding(.top, 4)
+                    .padding(.top, Spacing.xxs)
 
                 VStack(alignment: .leading, spacing: Spacing.xxxs) {
                     Text(event.title)
