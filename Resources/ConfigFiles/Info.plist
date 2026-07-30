@@ -2,9 +2,47 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<key>CFBundleDevelopmentRegion</key>
+	<string>en</string>
 	<key>CFBundleDisplayName</key>
 	<string>Galactic Calendar</string>
 	<key>CFBundleName</key>
 	<string>GalacticCalendar</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+	<key>CFBundleVersion</key>
+	<string>1</string>
+	<key>CFBundleLocalizations</key>
+	<array>
+		<string>en</string>
+		<string>es</string>
+	</array>
+	<key>LSApplicationCategoryType</key>
+	<string>public.app-category.productivity</string>
+	<key>NSHumanReadableCopyright</key>
+	<string>Copyright © 2026 Albancal. All rights reserved.</string>
+	<key>ITSAppUsesNonExemptEncryption</key>
+	<false/>
+	<key>UILaunchScreen</key>
+	<dict/>
+	<!--
+		Usage Descriptions
+		Shipped features use local UserNotifications only.
+		Apple does not define an Info.plist usage-description key for local
+		notification authorization; the system dialog is shown at request time.
+		Camera, Photos, Contacts, Calendar (EventKit), Location, Microphone,
+		and similar APIs are not used — no matching NS*UsageDescription keys.
+	-->
+	<key>GCLocalRemindersPurpose</key>
+	<string>Galactic Calendar schedules on-device reminders so you are notified before your events. Reminder data stays on this device.</string>
+	<!-- Canonical product URLs (host HTML before public App Store; OK for closed TestFlight). -->
+	<key>GCPrivacyPolicyURL</key>
+	<string>https://albancal.com/apps/galactic-calendar/privacy</string>
+	<key>GCTermsOfUseURL</key>
+	<string>https://albancal.com/apps/galactic-calendar/terms</string>
+	<key>GCSupportURL</key>
+	<string>https://albancal.com/apps/galactic-calendar/support</string>
+	<key>GCMarketingVersionNote</key>
+	<string>Private Beta 1.0.0 — local calendar and on-device reminders. CloudKit, Widgets, and Apple Watch are not included.</string>
 </dict>
 </plist>

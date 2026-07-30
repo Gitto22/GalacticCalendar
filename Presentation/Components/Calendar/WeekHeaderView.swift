@@ -28,9 +28,12 @@ struct WeekHeaderView: View {
                     .frame(maxWidth: .infinity)
                     .lineLimit(1)
                     .minimumScaleFactor(LayoutConstants.singleLineMinimumScale)
+                    .accessibilityLabel(weekday.title)
+                    .accessibilityIdentifier("calendar_weekday_\(weekday.id)")
             }
         }
         .accessibilityElement(children: .contain)
+        .accessibilityIdentifier("calendar_week_header")
     }
 
     // MARK: - Responsive Tokens
@@ -80,5 +83,6 @@ private extension WeekHeaderView {
             .padding(.horizontal, Spacing.pageHorizontal)
     }
     .environment(ThemeManager())
+    .environment(CalendarAppearanceManager())
 }
 #endif

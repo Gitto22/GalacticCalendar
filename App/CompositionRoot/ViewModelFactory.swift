@@ -24,9 +24,39 @@ final class ViewModelFactory {
 
     // MARK: - Home
 
-    /// Builds a ``HomeViewModel`` wired to the reactive event catalog.
+    /// Builds a ``HomeViewModel`` wired to events and Universe Messages.
     func makeHomeViewModel() -> HomeViewModel {
-        HomeViewModel(eventPersistenceService: container.eventPersistenceService)
+        let search = EventSearchViewModel(
+            persistenceService: container.eventPersistenceService
+        )
+        return HomeViewModel(
+            eventPersistenceService: container.eventPersistenceService,
+            eventTemplateService: container.eventTemplateService,
+            universeMessageViewModel: makeUniverseMessageViewModel(),
+            universeMessageEngine: container.universeMessageEngine,
+            eventSearchViewModel: search,
+            makeUniverseHistoryViewModel: { [container] in
+                UniverseHistoryViewModel(
+                    repository: container.universeMessageRepository,
+                    favoriteService: container.universeMessageService
+                )
+            },
+            makeUniverseMessageDetailViewModel: { [container] context in
+                UniverseMessageDetailViewModel(
+                    context: context,
+                    repository: container.universeMessageRepository,
+                    favoriteService: container.universeMessageService
+                )
+            }
+        )
+    }
+
+    /// Builds a ``UniverseMessageViewModel`` bound to the Universe engine and history recording.
+    func makeUniverseMessageViewModel() -> UniverseMessageViewModel {
+        UniverseMessageViewModel(
+            engine: container.universeMessageEngine,
+            repository: container.universeMessageRepository
+        )
     }
 
     // MARK: - Calendar
@@ -40,30 +70,6 @@ final class ViewModelFactory {
         CalendarGridViewModel(
             persistenceService: container.eventPersistenceService,
             engine: engine
-        )
-    }
-
-    // MARK: - Events
-
-    /// Builds an ``EventEditorViewModel`` for creating an event on the given date.
-    /// - Parameter date: Initial event date.
-    /// - Returns: Configured editor ViewModel in create mode.
-    func makeEventEditorViewModel(date: Date = Date()) -> EventEditorViewModel {
-        let viewModel = EventEditorViewModel(
-            persistenceService: container.eventPersistenceService,
-            initialDate: date
-        )
-        viewModel.prepareForCreation(on: date)
-        return viewModel
-    }
-
-    /// Builds a ``DayEventsViewModel`` for the given calendar day.
-    /// - Parameter date: Day to list.
-    /// - Returns: Configured day-events ViewModel.
-    func makeDayEventsViewModel(date: Date) -> DayEventsViewModel {
-        DayEventsViewModel(
-            date: date,
-            persistenceService: container.eventPersistenceService
         )
     }
 }

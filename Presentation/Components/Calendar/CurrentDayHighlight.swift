@@ -47,11 +47,39 @@ extension View {
         _ isHighlighted: Bool,
         cornerRadius: CGFloat = Spacing.Radius.sm
     ) -> some View {
-        overlay {
-            if isHighlighted {
-                CurrentDayHighlight(cornerRadius: cornerRadius)
+        modifier(
+            CurrentDayHighlightModifier(
+                isHighlighted: isHighlighted,
+                cornerRadius: cornerRadius
+            )
+        )
+    }
+}
+
+/// Applies a discreet opacity transition to the day highlight.
+private struct CurrentDayHighlightModifier: ViewModifier {
+
+    // MARK: - Properties
+
+    let isHighlighted: Bool
+    let cornerRadius: CGFloat
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
+    // MARK: - Body
+
+    func body(content: Content) -> some View {
+        content
+            .overlay {
+                if isHighlighted {
+                    CurrentDayHighlight(cornerRadius: cornerRadius)
+                        .transition(.opacity)
+                }
             }
-        }
+            .animation(
+                Motion.resolved(Motion.calendarSelection, reduceMotion: reduceMotion),
+                value: isHighlighted
+            )
     }
 }
 

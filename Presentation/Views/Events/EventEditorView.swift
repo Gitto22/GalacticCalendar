@@ -25,8 +25,17 @@ struct EventEditorView: View {
     /// Controls the operation-failure alert.
     @State private var isShowingErrorAlert: Bool = false
 
+    /// Controls the template-save failure alert.
+    @State private var isShowingTemplateErrorAlert: Bool = false
+
     /// Brief success feedback before dismissing after a successful save/delete.
     @State private var showsSuccessFeedback: Bool = false
+
+    /// Non-dismissing feedback after save-as-template.
+    @State private var showsTemplateSavedFeedback: Bool = false
+
+    /// Dismiss-after-success work; cancelled when the editor disappears.
+    @State private var successDismissTask: Task<Void, Never>?
 
     // MARK: - Lifecycle
 
@@ -42,30 +51,50 @@ struct EventEditorView: View {
     // MARK: - Body
 
     var body: some View {
-        VStack(alignment: .leading, spacing: Spacing.stackLoose) {
-            headerActions
-            titleField
-            descriptionField
-            selectorsGrid
+        ScrollView {
+            VStack(alignment: .leading, spacing: Spacing.stackLoose) {
+                headerActions
+                titleField
+                descriptionField
+                selectorsGrid
 
-            if viewModel.hasValidationIssues {
-                validationMessage
+                if viewModel.hasValidationIssues {
+                    validationMessage
+                }
+
+                saveButton
+
+                if viewModel.isEditing == false, viewModel.canUseTemplates {
+                    createFromTemplateButton
+                }
+
+                if viewModel.isEditing, viewModel.canUseTemplates {
+                    saveAsTemplateButton
+                }
+
+                if viewModel.isEditing {
+                    deleteButton
+                }
             }
-
-            saveButton
-
-            if viewModel.isEditing {
-                deleteButton
-            }
+            .padding(Spacing.md)
+            .glassEffect(.subtle, cornerRadius: Spacing.Radius.xl)
         }
-        .padding(Spacing.md)
-        .glassEffect(.subtle, cornerRadius: Spacing.Radius.xl)
         .padding(.horizontal, Spacing.pageHorizontal)
+        .accessibilityIdentifier("event_editor")
         .onChange(of: viewModel.didCompleteMutation) { _, completed in
             guard completed else {
                 return
             }
             presentSuccessThenDismiss()
+        }
+        .onChange(of: viewModel.didSaveAsTemplate) { _, saved in
+            guard saved else { return }
+            showsTemplateSavedFeedback = true
+            Task { @MainActor in
+                try? await Task.sleep(nanoseconds: UInt64(Animations.regularDuration * 1_000_000_000))
+                showsTemplateSavedFeedback = false
+                viewModel.clearTemplateFeedback()
+            }
         }
         .onChange(of: viewModel.lastError) { _, error in
             guard error != nil, viewModel.shouldPresentErrorAlert else {
@@ -73,9 +102,28 @@ struct EventEditorView: View {
             }
             isShowingErrorAlert = true
         }
+        .onChange(of: viewModel.lastTemplateError) { _, error in
+            isShowingTemplateErrorAlert = error != nil
+        }
         .task {
             // Permission prompt only; popup layout is unchanged.
             await viewModel.requestNotificationAuthorizationIfNeeded()
+        }
+        .fullScreenCover(
+            isPresented: $viewModel.isPresentingTemplatePicker,
+            onDismiss: { viewModel.dismissTemplatePicker() }
+        ) {
+            if let picker = viewModel.templatePickerViewModel {
+                EventTemplatePickerView(
+                    viewModel: picker,
+                    onSelect: { template in
+                        viewModel.applyTemplate(template)
+                    },
+                    onDismiss: {
+                        viewModel.dismissTemplatePicker()
+                    }
+                )
+            }
         }
         .confirmationDialog(
             String(localized: "event_delete_confirm_title"),
@@ -99,6 +147,20 @@ struct EventEditorView: View {
         } message: {
             Text(viewModel.errorAlertMessage ?? String(localized: "event_error_unknown"))
         }
+        .alert(
+            String(localized: "event_error_alert_title"),
+            isPresented: $isShowingTemplateErrorAlert
+        ) {
+            Button(String(localized: "event_error_alert_dismiss"), role: .cancel) {
+                viewModel.clearTemplateFeedback()
+            }
+        } message: {
+            Text(viewModel.templateErrorAlertMessage)
+        }
+        .onDisappear {
+            successDismissTask?.cancel()
+            successDismissTask = nil
+        }
     }
 
     // MARK: - Header
@@ -117,6 +179,8 @@ struct EventEditorView: View {
                 onDismiss()
             }
             .accessibilityLabel(Text(String(localized: "event_editor_close")))
+            .accessibilityHint(Text(String(localized: "event_editor_close_a11y_hint")))
+            .accessibilityIdentifier("event_editor_close")
 
             GlassCircleButton(
                 systemImage: showsSuccessFeedback ? Icons.Status.success : Icons.Events.confirm,
@@ -134,6 +198,8 @@ struct EventEditorView: View {
                         : String(localized: "event_editor_confirm")
                 )
             )
+            .accessibilityHint(Text(String(localized: "event_editor_confirm_a11y_hint")))
+            .accessibilityIdentifier("event_editor_confirm")
             .appAnimation(Animations.snappy, value: showsSuccessFeedback)
         }
     }
@@ -158,13 +224,17 @@ struct EventEditorView: View {
     /// Shows success affordances on existing controls, then dismisses.
     private func presentSuccessThenDismiss() {
         showsSuccessFeedback = true
-        Task {
+        successDismissTask?.cancel()
+        successDismissTask = Task { @MainActor in
             do {
                 try await Task.sleep(
                     nanoseconds: UInt64(Animations.regularDuration * 1_000_000_000)
                 )
             } catch {
                 // Cancellation still dismisses so the editor does not remain stuck.
+            }
+            guard Task.isCancelled == false else {
+                return
             }
             onDismiss()
         }
@@ -188,6 +258,8 @@ struct EventEditorView: View {
             .font(Typography.body)
             .foregroundStyle(ColorPalette.onImagePrimary)
             .textInputAutocapitalization(.sentences)
+            .accessibilityLabel(Text(String(localized: "event_title_placeholder")))
+            .accessibilityIdentifier("event_editor_title")
         }
         .padding(.horizontal, Spacing.sm)
         .padding(.vertical, Spacing.sm)
@@ -216,6 +288,8 @@ struct EventEditorView: View {
                     .scrollContentBackground(.hidden)
                     .background(Color.clear)
                     .frame(minHeight: LayoutConstants.eventDescriptionMinHeight)
+                    .accessibilityLabel(Text(String(localized: "event_description_placeholder")))
+                    .accessibilityIdentifier("event_editor_description")
 
                 if viewModel.description.isEmpty {
                     Text(String(localized: "event_description_placeholder"))
@@ -259,13 +333,20 @@ struct EventEditorView: View {
             ],
             spacing: Spacing.sm
         ) {
-            dateSelector
-            startTimeSelector
-            endTimeSelector
+            allDayToggle
+            startDateSelector
+            endDateSelector
+            if viewModel.isAllDay == false {
+                startTimeSelector
+                endTimeSelector
+            }
             timeZoneSelector
             reminderSelector
             repeatSelector
-            categorySelector
+            recurrenceEndSelector
+            recurrenceCountSelector
+            recurrenceEndDateSelector
+            tagsSelector
             prioritySelector
             statusSelector
             colorSelector
@@ -273,13 +354,42 @@ struct EventEditorView: View {
         .environment(\.timeZone, EventTimeZone.timeZone(for: viewModel.timeZoneIdentifier))
     }
 
-    /// Calendar day selector using the native date picker.
-    private var dateSelector: some View {
+    /// All-day switch; when on, start/end time tiles are hidden.
+    private var allDayToggle: some View {
+        selectorTile(
+            icon: Icons.Events.allDay,
+            label: String(localized: "event_field_all_day"),
+            showsChevron: false
+        ) {
+            valueRow {
+                Toggle("", isOn: $viewModel.isAllDay)
+                    .labelsHidden()
+                    .tint(ColorPalette.editorAccent)
+                    .accessibilityLabel(Text(String(localized: "event_field_all_day")))
+                    .accessibilityIdentifier("event_editor_all_day")
+            }
+        }
+    }
+
+    /// Start calendar day selector.
+    private var startDateSelector: some View {
         datePickerTile(
             icon: Icons.Events.eventDate,
-            label: String(localized: "event_field_date"),
+            label: String(localized: "event_field_start_date"),
             selection: $viewModel.date,
-            components: .date
+            components: .date,
+            accessibilityIdentifier: "event_editor_start_date"
+        )
+    }
+
+    /// End calendar day selector (never before the start date).
+    private var endDateSelector: some View {
+        datePickerTile(
+            icon: Icons.Events.endDate,
+            label: String(localized: "event_field_end_date"),
+            selection: $viewModel.endDate,
+            components: .date,
+            accessibilityIdentifier: "event_editor_end_date"
         )
     }
 
@@ -289,7 +399,8 @@ struct EventEditorView: View {
             icon: Icons.Events.startTime,
             label: String(localized: "event_field_start_time"),
             selection: $viewModel.date,
-            components: .hourAndMinute
+            components: .hourAndMinute,
+            accessibilityIdentifier: "event_editor_start_time"
         )
     }
 
@@ -299,7 +410,8 @@ struct EventEditorView: View {
             icon: Icons.Events.endTime,
             label: String(localized: "event_field_end_time"),
             selection: $viewModel.endDate,
-            components: .hourAndMinute
+            components: .hourAndMinute,
+            accessibilityIdentifier: "event_editor_end_time"
         )
     }
 
@@ -308,7 +420,8 @@ struct EventEditorView: View {
         selectorMenu(
             icon: Icons.Events.timeZone,
             label: String(localized: "event_field_timezone"),
-            showsChevron: true
+            showsChevron: true,
+            accessibilityIdentifier: "event_editor_timezone"
         ) {
             valueRow {
                 Text(viewModel.timeZoneDisplayName)
@@ -330,7 +443,8 @@ struct EventEditorView: View {
         selectorMenu(
             icon: Icons.Events.reminder,
             label: String(localized: "event_field_reminder"),
-            showsChevron: true
+            showsChevron: true,
+            accessibilityIdentifier: "event_editor_reminder"
         ) {
             valueRow {
                 Text(EventEditorDisplayNames.title(for: viewModel.reminderOption))
@@ -352,7 +466,8 @@ struct EventEditorView: View {
         selectorMenu(
             icon: Icons.Events.repeat,
             label: String(localized: "event_field_repeat"),
-            showsChevron: true
+            showsChevron: true,
+            accessibilityIdentifier: "event_editor_repeat"
         ) {
             valueRow {
                 Text(EventEditorDisplayNames.title(for: viewModel.repeatRule))
@@ -369,30 +484,88 @@ struct EventEditorView: View {
         }
     }
 
-    /// Category menu tile with leading color dot.
-    private var categorySelector: some View {
-        selectorMenu(
-            icon: Icons.Events.category,
-            label: String(localized: "event_field_category"),
-            showsChevron: true
-        ) {
-            valueRow {
-                HStack(spacing: Spacing.xxs) {
-                    Circle()
-                        .fill(ColorPalette.eventColorGreen)
-                        .frame(width: LayoutConstants.eventIndicatorSize, height: LayoutConstants.eventIndicatorSize)
-
-                    Text(EventEditorDisplayNames.title(for: viewModel.category))
+    /// Recurrence end-mode menu (hidden when the event does not repeat).
+    @ViewBuilder
+    private var recurrenceEndSelector: some View {
+        if viewModel.repeatRule.isRecurring {
+            selectorMenu(
+                icon: Icons.Events.repeatEnd,
+                label: String(localized: "event_field_repeat_end"),
+                showsChevron: true,
+                accessibilityIdentifier: "event_editor_repeat_end"
+            ) {
+                valueRow {
+                    Text(EventEditorDisplayNames.title(for: viewModel.recurrenceEndKind))
                         .font(Typography.subheadline)
                         .foregroundStyle(ColorPalette.onImagePrimary)
                         .lineLimit(1)
                 }
-            }
-        } menuContent: {
-            ForEach(EventCategory.allCases) { category in
-                Button(EventEditorDisplayNames.title(for: category)) {
-                    viewModel.category = category
+            } menuContent: {
+                ForEach(RecurrenceEndKind.allCases) { kind in
+                    Button(EventEditorDisplayNames.title(for: kind)) {
+                        viewModel.recurrenceEndKind = kind
+                    }
                 }
+            }
+        }
+    }
+
+    /// Occurrence count stepper tile.
+    @ViewBuilder
+    private var recurrenceCountSelector: some View {
+        if viewModel.repeatRule.isRecurring, viewModel.recurrenceEndKind == .afterCount {
+            selectorTile(
+                icon: Icons.Events.repeatCount,
+                label: String(localized: "event_field_repeat_count"),
+                showsChevron: false
+            ) {
+                valueRow {
+                    Stepper(
+                        value: $viewModel.recurrenceEndCount,
+                        in: 1...999
+                    ) {
+                        Text("\(viewModel.recurrenceEndCount)")
+                            .font(Typography.subheadline)
+                            .foregroundStyle(ColorPalette.onImagePrimary)
+                    }
+                    .labelsHidden()
+                    .tint(ColorPalette.editorAccent)
+                    .accessibilityLabel(Text(String(localized: "event_field_repeat_count")))
+                    .accessibilityValue(Text("\(viewModel.recurrenceEndCount)"))
+                    .accessibilityIdentifier("event_editor_repeat_count")
+                }
+            }
+        }
+    }
+
+    /// Recurrence end-date picker tile.
+    @ViewBuilder
+    private var recurrenceEndDateSelector: some View {
+        if viewModel.repeatRule.isRecurring, viewModel.recurrenceEndKind == .onDate {
+            datePickerTile(
+                icon: Icons.Events.repeatEnd,
+                label: String(localized: "event_field_repeat_end_date"),
+                selection: $viewModel.recurrenceEndDate,
+                components: .date,
+                accessibilityIdentifier: "event_editor_repeat_end_date"
+            )
+        }
+    }
+
+    /// Multi-select tag tile (presets only; custom tags reserved).
+    private var tagsSelector: some View {
+        selectorTile(
+            icon: Icons.Events.tags,
+            label: String(localized: "event_field_tags"),
+            showsChevron: false
+        ) {
+            valueRow {
+                FlowTagPicker(
+                    presets: viewModel.selectableTagPresets,
+                    isSelected: viewModel.isTagSelected,
+                    title: EventEditorDisplayNames.title(for:),
+                    onToggle: viewModel.toggleTag
+                )
             }
         }
     }
@@ -402,7 +575,8 @@ struct EventEditorView: View {
         selectorMenu(
             icon: Icons.Events.priority,
             label: String(localized: "event_field_priority"),
-            showsChevron: true
+            showsChevron: true,
+            accessibilityIdentifier: "event_editor_priority"
         ) {
             valueRow {
                 HStack(spacing: Spacing.xxs) {
@@ -432,7 +606,8 @@ struct EventEditorView: View {
         selectorMenu(
             icon: Icons.Events.status,
             label: String(localized: "event_field_status"),
-            showsChevron: true
+            showsChevron: true,
+            accessibilityIdentifier: "event_editor_status"
         ) {
             valueRow {
                 Text(EventEditorDisplayNames.title(for: viewModel.status))
@@ -476,7 +651,10 @@ struct EventEditorView: View {
                                 }
                         }
                         .buttonStyle(.plain)
-                        .accessibilityLabel(Text(eventColor.rawValue))
+                        .accessibilityLabel(Text(EventEditorDisplayNames.title(for: eventColor)))
+                        .accessibilityHint(Text(String(localized: "event_color_a11y_hint")))
+                        .accessibilityAddTraits(viewModel.color == eventColor ? .isSelected : [])
+                        .accessibilityIdentifier("event_editor_color_\(eventColor.rawValue)")
                     }
                 }
             }
@@ -526,7 +704,87 @@ struct EventEditorView: View {
                     : String(localized: "event_save_button")
             )
         )
+        .accessibilityHint(Text(String(localized: "event_editor_confirm_a11y_hint")))
+        .accessibilityIdentifier("event_editor_save")
         .appAnimation(Animations.snappy, value: showsSuccessFeedback)
+    }
+
+    // MARK: - Templates
+
+    /// Create-mode affordance to fill the form from a saved template.
+    private var createFromTemplateButton: some View {
+        Button {
+            viewModel.presentTemplatePicker()
+        } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: Icons.Events.template)
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorPalette.editorAccent)
+
+                Text(String(localized: "event_create_from_template"))
+                    .font(Typography.headline)
+                    .foregroundStyle(ColorPalette.onImagePrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.sm)
+            .background {
+                RoundedRectangle(cornerRadius: Spacing.Radius.lg, style: .continuous)
+                    .fill(ColorPalette.editorTileFill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Spacing.Radius.lg, style: .continuous)
+                    .stroke(
+                        ColorPalette.separator.opacity(ColorPalette.glassStrokeSubtleOpacity),
+                        lineWidth: Spacing.cardStroke
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .accessibilityLabel(Text(String(localized: "event_create_from_template")))
+        .accessibilityHint(Text(String(localized: "event_create_from_template_a11y_hint")))
+        .accessibilityIdentifier("event_editor_create_from_template")
+    }
+
+    /// Edit-mode affordance to snapshot the draft as an offline template.
+    private var saveAsTemplateButton: some View {
+        Button {
+            Task { await viewModel.saveCurrentAsTemplate() }
+        } label: {
+            HStack(spacing: Spacing.xs) {
+                Image(systemName: showsTemplateSavedFeedback ? Icons.Status.success : Icons.Events.saveTemplate)
+                    .font(Typography.headline)
+                    .foregroundStyle(
+                        showsTemplateSavedFeedback ? ColorPalette.success : ColorPalette.editorAccent
+                    )
+
+                Text(
+                    showsTemplateSavedFeedback
+                        ? String(localized: "event_template_save_success")
+                        : String(localized: "event_save_as_template")
+                )
+                .font(Typography.headline)
+                .foregroundStyle(ColorPalette.onImagePrimary)
+            }
+            .frame(maxWidth: .infinity)
+            .padding(.vertical, Spacing.sm)
+            .background {
+                RoundedRectangle(cornerRadius: Spacing.Radius.lg, style: .continuous)
+                    .fill(ColorPalette.editorTileFill)
+            }
+            .overlay {
+                RoundedRectangle(cornerRadius: Spacing.Radius.lg, style: .continuous)
+                    .stroke(
+                        ColorPalette.separator.opacity(ColorPalette.glassStrokeSubtleOpacity),
+                        lineWidth: Spacing.cardStroke
+                    )
+            }
+        }
+        .buttonStyle(.plain)
+        .disabled(viewModel.isSaving)
+        .accessibilityLabel(Text(String(localized: "event_save_as_template")))
+        .accessibilityHint(Text(String(localized: "event_save_as_template_a11y_hint")))
+        .accessibilityIdentifier("event_editor_save_as_template")
+        .appAnimation(Animations.snappy, value: showsTemplateSavedFeedback)
     }
 
     // MARK: - Delete
@@ -562,6 +820,8 @@ struct EventEditorView: View {
         .buttonStyle(.plain)
         .disabled(viewModel.isSaving)
         .accessibilityLabel(Text(String(localized: "event_delete_button")))
+        .accessibilityHint(Text(String(localized: "event_delete_a11y_hint")))
+        .accessibilityIdentifier("event_editor_delete")
     }
 
     // MARK: - Persistence
@@ -578,6 +838,7 @@ struct EventEditorView: View {
         icon: String,
         label: String,
         showsChevron: Bool,
+        accessibilityIdentifier: String,
         @ViewBuilder value: () -> Value,
         @ViewBuilder menuContent: () -> MenuItems
     ) -> some View {
@@ -587,6 +848,7 @@ struct EventEditorView: View {
             selectorTile(icon: icon, label: label, showsChevron: showsChevron, value: value)
         }
         .buttonStyle(.plain)
+        .accessibilityIdentifier(accessibilityIdentifier)
     }
 
     /// Selector tile hosting a compact native ``DatePicker``.
@@ -594,7 +856,8 @@ struct EventEditorView: View {
         icon: String,
         label: String,
         selection: Binding<Date>,
-        components: DatePicker.Components
+        components: DatePicker.Components,
+        accessibilityIdentifier: String
     ) -> some View {
         selectorTile(icon: icon, label: label, showsChevron: false) {
             valueRow {
@@ -607,8 +870,22 @@ struct EventEditorView: View {
                 .tint(ColorPalette.editorAccent)
                 .font(Typography.subheadline)
                 .foregroundStyle(ColorPalette.onImagePrimary)
+                .accessibilityLabel(Text(label))
+                .accessibilityValue(Text(datePickerAccessibilityValue(selection.wrappedValue, components: components)))
+                .accessibilityIdentifier(accessibilityIdentifier)
             }
         }
+    }
+
+    /// Formats a date/time for VoiceOver on editor pickers.
+    private func datePickerAccessibilityValue(
+        _ date: Date,
+        components: DatePicker.Components
+    ) -> String {
+        if components.contains(.hourAndMinute), components.contains(.date) == false {
+            return date.formatted(date: .omitted, time: .shortened)
+        }
+        return date.formatted(date: .abbreviated, time: .omitted)
     }
 
     /// Shared glass tile chrome for selector cells.
@@ -679,5 +956,6 @@ struct EventEditorView: View {
         )
     }
     .environment(ThemeManager())
+    .environment(CalendarAppearanceManager())
 }
 #endif

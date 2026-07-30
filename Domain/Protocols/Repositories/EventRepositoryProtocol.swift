@@ -39,10 +39,12 @@ protocol EventRepositoryProtocol: AnyObject {
     /// - Parameter interval: Date interval to query.
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]]
 
-    /// Returns events whose ``RepeatRule`` is recurring.
+    /// Returns stored masters matching ``criteria`` (in-memory single pass after fetch).
     ///
-    /// Does **not** expand occurrences — only filters stored rules.
-    func fetchRecurring() async throws -> [Event]
+    /// Does **not** expand recurrence for date facets — prefer
+    /// ``EventCatalogService/events(matching:)`` for UI search. This exists so
+    /// offline tooling / tests can filter the store without the catalog.
+    func fetch(matching criteria: EventSearchCriteria) async throws -> [Event]
 
     // MARK: - Update
 
@@ -66,4 +68,21 @@ protocol EventRepositoryProtocol: AnyObject {
     /// - Parameter event: Source event to duplicate.
     /// - Returns: The newly created duplicate.
     func duplicate(_ event: Event) async throws -> Event
+}
+
+// MARK: - Default Search
+
+extension EventRepositoryProtocol {
+
+    /// Default store-side filter: ``fetchAll`` + single-pass ``EventSearchCriteria/filter(_:)``.
+    ///
+    /// Does not expand recurrence for date facets. UI search should use
+    /// ``EventCatalogService/events(matching:)``.
+    func fetch(matching criteria: EventSearchCriteria) async throws -> [Event] {
+        let all = try await fetchAll()
+        guard criteria.isEmpty == false else {
+            return all
+        }
+        return criteria.filter(all)
+    }
 }

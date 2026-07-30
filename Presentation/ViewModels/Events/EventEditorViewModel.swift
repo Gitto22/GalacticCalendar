@@ -21,7 +21,7 @@ enum EventEditorMode: Equatable, Sendable {
 ///
 /// ## Responsibilities
 /// - Expose editable event fields to SwiftUI through Observation (`@Observable`).
-/// - Own schedule composition (day, start time, end time, time zone).
+/// - Own schedule composition (day, start/end time or all-day, time zone).
 /// - Validate drafts via ``EventValidationService``.
 /// - Persist create/update/delete operations via ``EventPersistenceService``.
 ///
@@ -38,6 +38,9 @@ final class EventEditorViewModel {
     /// Service used to create, update, delete, and fetch events.
     private let persistenceService: EventPersistenceService
 
+    /// Optional offline templates façade (save-as-template).
+    private let templateService: EventTemplateService?
+
     /// Service used to validate event drafts before persistence.
     private let validationService: EventValidationService
 
@@ -51,19 +54,84 @@ final class EventEditorViewModel {
 
     /// Start date and time of the event.
     ///
-    /// When the start changes, ``reminder`` is recomputed and ``endDate`` keeps
-    /// the previous duration relative to the start.
+    /// When the start changes, ``reminder`` is recomputed. For timed events,
+    /// ``endDate`` keeps the previous duration (including multi-day spans).
+    /// For all-day events, day bounds are re-normalized while preserving the
+    /// end calendar day when it remains on or after the start.
     var date: Date = Date() {
         didSet {
-            let previousDuration = endDate.timeIntervalSince(oldValue)
-            let duration = previousDuration > 0 ? previousDuration : Self.defaultDuration
-            endDate = date.addingTimeInterval(duration)
+            guard isHydratingForm == false else {
+                return
+            }
+            if isAllDay {
+                if endDate < date {
+                    isHydratingForm = true
+                    endDate = date
+                    isHydratingForm = false
+                }
+                applyAllDayBounds(cachingTimedValues: false)
+            } else {
+                let previousDuration = endDate.timeIntervalSince(oldValue)
+                let duration = previousDuration > 0 ? previousDuration : Self.defaultDuration
+                isHydratingForm = true
+                endDate = date.addingTimeInterval(duration)
+                isHydratingForm = false
+            }
             reminder = reminderOption.reminderDate(relativeTo: date)
         }
     }
 
     /// End date and time of the event.
-    var endDate: Date = Date()
+    ///
+    /// Never allowed to fall before ``date``; clamped automatically for the editor.
+    var endDate: Date = Date() {
+        didSet {
+            guard isHydratingForm == false else {
+                return
+            }
+            if endDate < date {
+                isHydratingForm = true
+                endDate = date
+                isHydratingForm = false
+            }
+            if isAllDay {
+                applyAllDayBounds(cachingTimedValues: false)
+            }
+        }
+    }
+
+    /// Start date alias used by multi-day editor APIs (same storage as ``date``).
+    var startDate: Date {
+        get { date }
+        set { date = newValue }
+    }
+
+    /// `true` when the draft spans more than one calendar day.
+    var isMultiDay: Bool {
+        EventSchedule.spansMultipleCalendarDays(
+            date: date,
+            endDate: endDate,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+    }
+
+    /// `true` when the draft is an all-day event (hides time pickers in the view).
+    var isAllDay: Bool = false {
+        didSet {
+            guard isHydratingForm == false else {
+                return
+            }
+            guard isAllDay != oldValue else {
+                return
+            }
+            if isAllDay {
+                applyAllDayBounds(cachingTimedValues: true)
+            } else {
+                restoreTimedDefaultsIfNeeded()
+            }
+            reminder = reminderOption.reminderDate(relativeTo: date)
+        }
+    }
 
     /// IANA time zone identifier used while editing the schedule.
     var timeZoneIdentifier: String = TimeZone.current.identifier
@@ -80,11 +148,32 @@ final class EventEditorViewModel {
     /// Optional reminder fire date derived from ``reminderOption``.
     private(set) var reminder: Date?
 
-    /// Recurrence rule applied to the event.
-    var repeatRule: RepeatRule = .none
+    /// Recurrence rule applied to the event (frequency only; end lives in end-kind fields).
+    var repeatRule: RepeatRule = .none {
+        didSet {
+            guard isHydratingForm == false else {
+                return
+            }
+            if repeatRule.isRecurring == false {
+                recurrenceEndKind = .never
+            }
+        }
+    }
 
-    /// Selected event category.
+    /// How the recurrence series ends (editor UI).
+    var recurrenceEndKind: RecurrenceEndKind = .never
+
+    /// Occurrence count when ``recurrenceEndKind`` is ``RecurrenceEndKind/afterCount``.
+    var recurrenceEndCount: Int = 10
+
+    /// End date when ``recurrenceEndKind`` is ``RecurrenceEndKind/onDate``.
+    var recurrenceEndDate: Date = Date()
+
+    /// Selected event category (legacy single-value; synced from tags).
     var category: EventCategory = .work
+
+    /// Selected organization tags (multiple presets allowed).
+    var tags: [EventTag] = [.preset(.work)]
 
     /// Selected event priority.
     var priority: EventPriority = .high
@@ -94,6 +183,36 @@ final class EventEditorViewModel {
 
     /// Selected event color token.
     var color: EventColor = .green
+
+    /// Preset tags available in the editor (custom tags reserved for later).
+    var selectableTagPresets: [EventTagPreset] {
+        EventTagPreset.allCases
+    }
+
+    /// `true` when ``preset`` is currently selected.
+    func isTagSelected(_ preset: EventTagPreset) -> Bool {
+        tags.contains(.preset(preset))
+    }
+
+    /// Toggles a preset tag and syncs ``category`` from the first remaining preset.
+    func toggleTag(_ preset: EventTagPreset) {
+        let tag = EventTag.preset(preset)
+        if let index = tags.firstIndex(of: tag) {
+            tags.remove(at: index)
+        } else {
+            tags.append(tag)
+        }
+        syncCategoryFromTags()
+    }
+
+    /// Syncs legacy ``category`` from the first selected preset tag.
+    private func syncCategoryFromTags() {
+        if let first = tags.compactMap(\.preset).first {
+            category = first.asCategory
+        } else {
+            category = .other
+        }
+    }
 
     // MARK: - Editor Metadata
 
@@ -105,6 +224,15 @@ final class EventEditorViewModel {
 
     /// Original `createdAt` value preserved while editing.
     private var editingCreatedAt: Date?
+
+    /// Timed start retained when toggling all-day on (restored on toggle off).
+    private var cachedTimedDate: Date?
+
+    /// Timed end retained when toggling all-day on (restored on toggle off).
+    private var cachedTimedEndDate: Date?
+
+    /// Suppresses schedule side effects while hydrating the form from an ``Event``.
+    private var isHydratingForm: Bool = false
 
     /// Validation issues produced by the latest ``validate()`` call.
     private(set) var validationIssues: [EventValidationIssue] = []
@@ -118,21 +246,36 @@ final class EventEditorViewModel {
     /// `true` after a successful create, update, or delete.
     private(set) var didCompleteMutation: Bool = false
 
+    /// `true` after the current draft was saved as a template (non-dismissing feedback).
+    private(set) var didSaveAsTemplate: Bool = false
+
+    /// Last template-persistence failure, when present.
+    private(set) var lastTemplateError: EventTemplateRepositoryError?
+
+    /// `true` while the create-from-template picker is presented from the editor.
+    var isPresentingTemplatePicker: Bool = false
+
+    /// Nested template picker ViewModel, if any.
+    private(set) var templatePickerViewModel: EventTemplatePickerViewModel?
+
     // MARK: - Lifecycle
 
     /// Creates an event editor view model.
     /// - Parameters:
     ///   - persistenceService: Persistence façade for event CRUD.
+    ///   - templateService: Optional templates façade for save-as-template.
     ///   - validationService: Validator for draft events.
     ///   - initialDate: Default start date for a new event draft.
     ///   - event: Optional existing event that puts the editor in edit mode.
     init(
         persistenceService: EventPersistenceService,
+        templateService: EventTemplateService? = nil,
         validationService: EventValidationService = EventValidationService(),
         initialDate: Date = Date(),
         event: Event? = nil
     ) {
         self.persistenceService = persistenceService
+        self.templateService = templateService
         self.validationService = validationService
         self.date = initialDate
         self.endDate = initialDate.addingTimeInterval(Self.defaultDuration)
@@ -166,10 +309,51 @@ final class EventEditorViewModel {
     func prepareForCreation(on date: Date = Date()) {
         reset()
         mode = .create
+        isAllDay = false
         self.date = date
         endDate = date.addingTimeInterval(Self.defaultDuration)
         timeZoneIdentifier = TimeZone.current.identifier
         reminderOption = .fifteenMinutes
+    }
+
+    /// Prepares create mode by applying an ``EventTemplate`` (no absolute dates / reminders).
+    /// - Parameters:
+    ///   - template: Blueprint whose content fields are copied into the form.
+    ///   - date: Schedule anchor for the new event (device calendar day / start).
+    func prepareForCreation(from template: EventTemplate, on date: Date = Date()) {
+        reset()
+        mode = .create
+        didSaveAsTemplate = false
+        lastTemplateError = nil
+
+        isHydratingForm = true
+        title = template.title
+        description = template.description
+        isAllDay = template.isAllDay
+        timeZoneIdentifier = template.timeZoneIdentifier ?? TimeZone.current.identifier
+        let bounds = template.scheduleBounds(on: date, timeZoneIdentifier: timeZoneIdentifier)
+        self.date = bounds.date
+        endDate = bounds.endDate ?? bounds.date.addingTimeInterval(template.durationSeconds)
+        cachedTimedDate = nil
+        cachedTimedEndDate = nil
+        reminderOption = .fifteenMinutes
+        reminder = reminderOption.reminderDate(relativeTo: self.date)
+        repeatRule = RepeatRule(
+            frequency: template.repeatRule.frequency,
+            interval: template.repeatRule.interval
+        )
+        applyRecurrenceEnd(from: template.repeatRule)
+        tags = template.tags.isEmpty
+            ? (EventTagPreset.from(category: template.category).map { [.preset($0)] } ?? [])
+            : template.tags
+        category = template.category
+        priority = template.priority
+        status = template.status
+        color = template.color
+        isHydratingForm = false
+        validationIssues = []
+        lastError = nil
+        didCompleteMutation = false
     }
 
     /// Prepares the ViewModel to edit an existing event.
@@ -181,10 +365,33 @@ final class EventEditorViewModel {
         title = event.title
         description = event.description
         timeZoneIdentifier = event.timeZoneIdentifier
+        isHydratingForm = true
+        isAllDay = event.isAllDay
         date = event.date
         endDate = event.endDate ?? event.date.addingTimeInterval(Self.defaultDuration)
-        reminderOption = EventReminderOption.option(for: event.reminder, eventDate: event.date)
-        repeatRule = event.repeatRule
+        if event.isAllDay {
+            let bounds = EventSchedule.normalizeAllDay(
+                start: event.date,
+                end: event.endDate,
+                timeZoneIdentifier: event.timeZoneIdentifier
+            )
+            date = bounds.date
+            endDate = bounds.endDate
+        }
+        cachedTimedDate = nil
+        cachedTimedEndDate = nil
+        isHydratingForm = false
+        reminderOption = EventReminderOption.option(for: event.reminder, eventDate: date)
+        isHydratingForm = true
+        repeatRule = RepeatRule(
+            frequency: event.repeatRule.frequency,
+            interval: event.repeatRule.interval
+        )
+        applyRecurrenceEnd(from: event.repeatRule)
+        isHydratingForm = false
+        tags = event.tags.isEmpty
+            ? (EventTagPreset.from(category: event.category).map { [.preset($0)] } ?? [])
+            : event.tags
         category = event.category
         priority = event.priority
         status = event.status
@@ -301,6 +508,65 @@ final class EventEditorViewModel {
         return created
     }
 
+    // MARK: - Templates
+
+    /// Persists the current draft as a new offline ``EventTemplate`` (no reminders).
+    /// - Parameter name: Optional template display name; defaults to the event title.
+    @discardableResult
+    func saveCurrentAsTemplate(name: String? = nil) async -> EventTemplate? {
+        guard let templateService else {
+            lastTemplateError = .saveFailed
+            return nil
+        }
+        didSaveAsTemplate = false
+        lastTemplateError = nil
+        let draft = makeDraftEvent()
+        do {
+            let template = try await templateService.saveEventAsTemplate(draft, name: name)
+            didSaveAsTemplate = true
+            return template
+        } catch let error as EventTemplateRepositoryError {
+            lastTemplateError = error
+            return nil
+        } catch {
+            lastTemplateError = .saveFailed
+            return nil
+        }
+    }
+
+    /// Clears template feedback after the user dismisses UI.
+    func clearTemplateFeedback() {
+        didSaveAsTemplate = false
+        lastTemplateError = nil
+    }
+
+    /// `true` when create-from-template / save-as-template can be offered.
+    var canUseTemplates: Bool {
+        templateService != nil
+    }
+
+    /// Opens the template picker (create mode only).
+    func presentTemplatePicker() {
+        guard mode == .create, let templateService else {
+            return
+        }
+        templatePickerViewModel = EventTemplatePickerViewModel(templateService: templateService)
+        isPresentingTemplatePicker = true
+    }
+
+    /// Dismisses the template picker without applying.
+    func dismissTemplatePicker() {
+        isPresentingTemplatePicker = false
+        templatePickerViewModel = nil
+    }
+
+    /// Applies a template into the current create form (keeps the editor's schedule anchor day).
+    func applyTemplate(_ template: EventTemplate) {
+        let anchor = date
+        dismissTemplatePicker()
+        prepareForCreation(from: template, on: anchor)
+    }
+
     // MARK: - Reset
 
     /// Resets all form fields and editor metadata to defaults for creation.
@@ -311,17 +577,26 @@ final class EventEditorViewModel {
         title = ""
         description = ""
         timeZoneIdentifier = TimeZone.current.identifier
+        cachedTimedDate = nil
+        cachedTimedEndDate = nil
+        isAllDay = false
         date = Date()
         endDate = date.addingTimeInterval(Self.defaultDuration)
         reminderOption = .fifteenMinutes
         reminder = reminderOption.reminderDate(relativeTo: date)
         repeatRule = .none
+        recurrenceEndKind = .never
+        recurrenceEndCount = 10
+        recurrenceEndDate = Date()
+        tags = [.preset(.work)]
         category = .work
         priority = .high
         status = .pending
         color = .green
         validationIssues = []
         lastError = nil
+        lastTemplateError = nil
+        didSaveAsTemplate = false
         isSaving = false
         didCompleteMutation = false
     }
@@ -344,6 +619,16 @@ final class EventEditorViewModel {
             return nil
         }
         return EventEditorDisplayNames.message(for: lastError)
+    }
+
+    /// Localized message for ``lastTemplateError``.
+    var templateErrorAlertMessage: String {
+        switch lastTemplateError {
+        case .corruptData:
+            String(localized: "event_template_error_corrupt_data")
+        case .notFound, .saveFailed, .none:
+            String(localized: "event_template_error_save_failed")
+        }
     }
 
     /// `true` when ``lastError`` should be presented as an alert (not inline validation).
@@ -372,26 +657,123 @@ final class EventEditorViewModel {
     /// Default event duration when no end date is stored (1 hour).
     private static let defaultDuration: TimeInterval = 3_600
 
+    /// Default wall-clock hour used when leaving all-day mode without a cache.
+    private static let defaultTimedStartHour: Int = 9
+
     /// Builds a Domain ``Event`` snapshot from the current form state.
     private func makeDraftEvent() -> Event {
         let now = Date()
-        let resolvedReminder = reminderOption.reminderDate(relativeTo: date)
+        let bounds = EventSchedule.normalizedBounds(
+            isAllDay: isAllDay,
+            date: date,
+            endDate: endDate,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+        let resolvedReminder = reminderOption.reminderDate(relativeTo: bounds.date)
         return Event(
             id: editingEventID ?? UUID(),
             title: title,
             description: description,
-            date: date,
-            endDate: endDate,
+            date: bounds.date,
+            endDate: bounds.endDate,
+            isAllDay: isAllDay,
             timeZoneIdentifier: timeZoneIdentifier,
             reminder: resolvedReminder,
-            repeatRule: repeatRule,
+            repeatRule: composedRepeatRule(),
             category: category,
+            tags: tags,
             priority: priority,
             status: status,
             color: color,
             createdAt: editingCreatedAt ?? now,
             updatedAt: now
         )
+    }
+
+    /// Combines frequency presets with the editor end-kind fields.
+    private func composedRepeatRule() -> RepeatRule {
+        guard repeatRule.isRecurring else {
+            return .none
+        }
+        switch recurrenceEndKind {
+        case .never:
+            return RepeatRule(frequency: repeatRule.frequency, interval: repeatRule.interval)
+        case .afterCount:
+            return RepeatRule(
+                frequency: repeatRule.frequency,
+                interval: repeatRule.interval,
+                occurrenceCount: max(1, recurrenceEndCount)
+            )
+        case .onDate:
+            return RepeatRule(
+                frequency: repeatRule.frequency,
+                interval: repeatRule.interval,
+                endDate: max(recurrenceEndDate, date)
+            )
+        }
+    }
+
+    /// Hydrates end-kind fields from a persisted rule.
+    private func applyRecurrenceEnd(from rule: RepeatRule) {
+        if let count = rule.occurrenceCount {
+            recurrenceEndKind = .afterCount
+            recurrenceEndCount = count
+            recurrenceEndDate = date.addingTimeInterval(86_400 * 30)
+        } else if let endDate = rule.endDate {
+            recurrenceEndKind = .onDate
+            recurrenceEndDate = endDate
+            recurrenceEndCount = 10
+        } else {
+            recurrenceEndKind = .never
+            recurrenceEndCount = 10
+            recurrenceEndDate = date.addingTimeInterval(86_400 * 30)
+        }
+    }
+
+    /// Clamps ``date`` / ``endDate`` to all-day day bounds (supports multi-day).
+    /// - Parameter cachingTimedValues: When `true`, remembers the prior timed range.
+    private func applyAllDayBounds(cachingTimedValues: Bool) {
+        if cachingTimedValues, cachedTimedDate == nil {
+            cachedTimedDate = date
+            cachedTimedEndDate = endDate
+        }
+        let bounds = EventSchedule.normalizeAllDay(
+            start: date,
+            end: endDate,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+        isHydratingForm = true
+        date = bounds.date
+        endDate = bounds.endDate
+        isHydratingForm = false
+    }
+
+    /// Restores timed start/end after leaving all-day mode.
+    private func restoreTimedDefaultsIfNeeded() {
+        isHydratingForm = true
+        defer { isHydratingForm = false }
+
+        if let cachedTimedDate, let cachedTimedEndDate {
+            date = cachedTimedDate
+            endDate = cachedTimedEndDate
+            self.cachedTimedDate = nil
+            self.cachedTimedEndDate = nil
+            return
+        }
+
+        var calendar = Calendar(identifier: .gregorian)
+        calendar.timeZone = TimeZone(identifier: timeZoneIdentifier) ?? .current
+        let dayStart = calendar.startOfDay(for: date)
+        let timedStart =
+            calendar.date(
+                bySettingHour: Self.defaultTimedStartHour,
+                minute: 0,
+                second: 0,
+                of: dayStart
+            )
+            ?? dayStart.addingTimeInterval(TimeInterval(Self.defaultTimedStartHour * 3_600))
+        date = timedStart
+        endDate = timedStart.addingTimeInterval(Self.defaultDuration)
     }
 
     /// Executes a persistence mutation with shared loading and error handling.

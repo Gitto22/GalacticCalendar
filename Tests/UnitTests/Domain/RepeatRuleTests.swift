@@ -15,31 +15,39 @@ final class RepeatRuleTests: XCTestCase {
         let frequencies = RepeatRule.editorSelectableRules.map(\.frequency)
         XCTAssertEqual(
             frequencies,
-            [.none, .daily, .weekly, .monthly, .yearly]
+            [.none, .daily, .weekly, .biweekly, .monthly, .yearly]
         )
     }
 
     // MARK: - Plain Persistence
 
-    func testEncodeDefaultRuleUsesFrequencyRawValue() {
-        XCTAssertEqual(RepeatRule.none.encodeForPersistence(), "none")
-        XCTAssertEqual(RepeatRule.daily.encodeForPersistence(), "daily")
-        XCTAssertEqual(RepeatRule.weekly.encodeForPersistence(), "weekly")
-        XCTAssertEqual(RepeatRule.monthly.encodeForPersistence(), "monthly")
-        XCTAssertEqual(RepeatRule.yearly.encodeForPersistence(), "yearly")
+    func testEncodeDefaultRuleUsesFrequencyRawValue() throws {
+        XCTAssertEqual(try RepeatRule.none.encodeForPersistence(), "none")
+        XCTAssertEqual(try RepeatRule.daily.encodeForPersistence(), "daily")
+        XCTAssertEqual(try RepeatRule.weekly.encodeForPersistence(), "weekly")
+        XCTAssertEqual(try RepeatRule.monthly.encodeForPersistence(), "monthly")
+        XCTAssertEqual(try RepeatRule.yearly.encodeForPersistence(), "yearly")
+        XCTAssertEqual(try RepeatRule.biweekly.encodeForPersistence(), "biweekly")
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("biweekly"), .biweekly)
     }
 
-    func testDecodeLegacyFrequencyStrings() {
-        XCTAssertEqual(RepeatRule.decodeFromPersistence("none"), .none)
-        XCTAssertEqual(RepeatRule.decodeFromPersistence("daily"), .daily)
-        XCTAssertEqual(RepeatRule.decodeFromPersistence("weekly"), .weekly)
-        XCTAssertEqual(RepeatRule.decodeFromPersistence("monthly"), .monthly)
-        XCTAssertEqual(RepeatRule.decodeFromPersistence("yearly"), .yearly)
+    func testDecodeLegacyFrequencyStrings() throws {
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("none"), .none)
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("daily"), .daily)
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("weekly"), .weekly)
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("biweekly"), .biweekly)
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("monthly"), .monthly)
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence("yearly"), .yearly)
     }
 
-    func testDecodeUnknownStringFallsBackToNone() {
-        XCTAssertEqual(RepeatRule.decodeFromPersistence("not-a-rule"), .none)
-        XCTAssertEqual(RepeatRule.decodeFromPersistence(""), .none)
+    func testDecodeEmptyStringIsNone() throws {
+        XCTAssertEqual(try RepeatRule.decodeFromPersistence(""), .none)
+    }
+
+    func testDecodeUnknownStringThrows() {
+        XCTAssertThrowsError(try RepeatRule.decodeFromPersistence("not-a-rule")) { error in
+            XCTAssertEqual(error as? EventPersistenceCodecError, .decodingFailed)
+        }
     }
 
     // MARK: - Versioned Envelope
@@ -52,10 +60,10 @@ final class RepeatRuleTests: XCTestCase {
             endDate: end
         )
 
-        let raw = original.encodeForPersistence()
+        let raw = try original.encodeForPersistence()
         XCTAssertNil(RepeatFrequency(rawValue: raw))
 
-        let decoded = RepeatRule.decodeFromPersistence(raw)
+        let decoded = try RepeatRule.decodeFromPersistence(raw)
         XCTAssertEqual(decoded.frequency, .weekly)
         XCTAssertEqual(decoded.interval, 2)
         XCTAssertEqual(
@@ -75,5 +83,13 @@ final class RepeatRuleTests: XCTestCase {
                 customConfiguration: RepeatCustomConfiguration(payload: Data([1]))
             ).isRecurring
         )
+    }
+
+    func testAsRecurrenceRuleBridge() {
+        let rule = RepeatRule(frequency: .weekly, interval: 2, occurrenceCount: 4)
+        let canonical = rule.asRecurrenceRule
+        XCTAssertEqual(canonical.frequency, .weekly)
+        XCTAssertEqual(canonical.interval, 2)
+        XCTAssertEqual(canonical.end, .after(count: 4))
     }
 }

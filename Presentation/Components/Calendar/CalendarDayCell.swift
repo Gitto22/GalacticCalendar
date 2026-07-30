@@ -31,9 +31,6 @@ enum CalendarDayCellState: String, Sendable, CaseIterable, Equatable, Identifiab
     /// Reserved for event indicators when the day has events.
     case withEvent
 
-    /// Reserved for future gift decoration.
-    case withGift
-
     // MARK: - Identifiable
 
     var id: String { rawValue }
@@ -62,6 +59,12 @@ struct CalendarDayCell: View {
     let eventColors: [EventColor]
     let eventCount: Int
 
+    /// VoiceOver summary for the cell (empty when outside the displayed month).
+    private let accessibilitySummary: String
+
+    /// Stable UI-test / VoiceOver identifier (`nil` when outside the month).
+    private let dayAccessibilityIdentifier: String?
+
     // MARK: - Lifecycle
 
     /// Creates a day cell from a domain ``CalendarDay``.
@@ -71,6 +74,10 @@ struct CalendarDayCell: View {
         self.states = CalendarDayPresentationMapper.states(for: day)
         self.eventColors = day.eventColors
         self.eventCount = day.eventCount
+        self.accessibilitySummary = Self.makeAccessibilitySummary(for: day)
+        self.dayAccessibilityIdentifier = day.isCurrentMonth
+            ? "calendar_day_\(day.id)"
+            : nil
     }
 
     /// Creates a day cell from explicit presentation values.
@@ -79,13 +86,16 @@ struct CalendarDayCell: View {
         isWeekend: Bool = false,
         states: Set<CalendarDayCellState> = [.normal],
         eventColors: [EventColor] = [],
-        eventCount: Int = 0
+        eventCount: Int = 0,
+        accessibilitySummary: String? = nil
     ) {
         self.dayNumber = dayNumber
         self.isWeekend = isWeekend
         self.states = states.isEmpty ? [.normal] : states
         self.eventColors = eventColors
         self.eventCount = eventCount
+        self.accessibilitySummary = accessibilitySummary ?? String(dayNumber)
+        self.dayAccessibilityIdentifier = nil
     }
 
     // MARK: - Body
@@ -106,8 +116,13 @@ struct CalendarDayCell: View {
         .overlay(cellBorder)
         .currentDayHighlight(isHighlighted)
         .opacity(isOutsideDisplayedMonth ? ColorPalette.dayOutsideOpacity : 1)
-        .accessibilityLabel(Text(dayNumberText))
+        .accessibilityElement(children: .ignore)
+        .accessibilityLabel(Text(accessibilitySummary))
+        .accessibilityHint(Text(String(localized: "calendar_day_a11y_hint")))
+        .accessibilityValue(Text(accessibilityValueText))
         .accessibilityAddTraits(accessibilityTraits)
+        .accessibilityIdentifier(dayAccessibilityIdentifier ?? "")
+        .accessibilityHidden(isOutsideDisplayedMonth)
     }
 
     // MARK: - State Helpers
@@ -133,11 +148,22 @@ struct CalendarDayCell: View {
     }
 
     private var accessibilityTraits: AccessibilityTraits {
-        var traits: AccessibilityTraits = []
+        guard isOutsideDisplayedMonth == false else {
+            return []
+        }
+        var traits: AccessibilityTraits = .isButton
         if isSelected {
             traits.insert(.isSelected)
         }
         return traits
+    }
+
+    /// Selected state for VoiceOver value (event count already lives in the label).
+    private var accessibilityValueText: String {
+        if isSelected {
+            return String(localized: "calendar_day_selected_a11y")
+        }
+        return String(localized: "calendar_day_not_selected_a11y")
     }
 
     // MARK: - Visual Helpers
@@ -170,6 +196,35 @@ struct CalendarDayCell: View {
     private var dayNumberColor: Color {
         isWeekend ? ColorPalette.weekend : ColorPalette.onImagePrimary
     }
+
+    // MARK: - Accessibility
+
+    /// Builds a VoiceOver label with date context, today/selected, and event count.
+    private static func makeAccessibilitySummary(for day: CalendarDay) -> String {
+        guard day.isCurrentMonth else {
+            return String(day.dayNumber)
+        }
+
+        var parts: [String] = [
+            day.date.formatted(.dateTime.weekday(.wide).month(.wide).day().year())
+        ]
+        if day.isToday {
+            parts.append(String(localized: "calendar_day_today_a11y"))
+        }
+        if day.isSelected {
+            parts.append(String(localized: "calendar_day_selected_a11y"))
+        }
+        if day.eventCount > 0 {
+            parts.append(
+                String(
+                    format: String(localized: "calendar_day_events_a11y"),
+                    locale: .current,
+                    day.eventCount
+                )
+            )
+        }
+        return parts.joined(separator: ", ")
+    }
 }
 
 // MARK: - Previews
@@ -187,5 +242,6 @@ struct CalendarDayCell: View {
     .padding()
     .background(MonthBackgroundView())
     .environment(ThemeManager())
+    .environment(CalendarAppearanceManager())
 }
 #endif

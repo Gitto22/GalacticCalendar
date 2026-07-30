@@ -39,13 +39,13 @@ enum Icons {
         /// Today affordance.
         static let today = "calendar.circle"
 
-        /// Previous period.
+        /// Previous period (month navigation).
         static let previous = "chevron.left"
 
-        /// Next period.
+        /// Next period (month navigation).
         static let next = "chevron.right"
 
-        /// Affordance reserved for changing the visible month.
+        /// Legacy single-arrow affordance (retained for compatibility).
         static let changeMonth = "chevron.down"
 
         /// Decorative star paired with the Home calendar control.
@@ -81,8 +81,11 @@ enum Icons {
         /// Repeat selector glyph.
         static let `repeat` = "arrow.triangle.2.circlepath"
 
-        /// Category selector glyph.
+        /// Category / tags selector glyph.
         static let category = "rocket"
+
+        /// Tags multi-select glyph.
+        static let tags = "tag.fill"
 
         /// Priority selector glyph.
         static let priority = "flag.fill"
@@ -105,11 +108,29 @@ enum Icons {
         /// Save action sparkles.
         static let save = "sparkles"
 
+        /// Recurrence end affordance.
+        static let repeatEnd = "calendar.badge.minus"
+
+        /// Recurrence occurrence-count affordance.
+        static let repeatCount = "number"
+
         /// Duplicate event affordance.
         static let duplicate = "plus.square.on.square"
 
+        /// Move / reprogram event affordance.
+        static let move = "arrow.right.circle"
+
+        /// Copy event to another date.
+        static let copy = "rectangle.on.rectangle"
+
         /// Event calendar day selector.
         static let eventDate = "calendar"
+
+        /// All-day event toggle.
+        static let allDay = "sun.max"
+
+        /// Event end calendar day selector.
+        static let endDate = "calendar.badge.clock"
 
         /// Event start time selector.
         static let startTime = "clock"
@@ -119,6 +140,12 @@ enum Icons {
 
         /// Event time zone selector.
         static let timeZone = "globe"
+
+        /// Event template / blueprint affordance.
+        static let template = "doc.on.doc"
+
+        /// Save current event as a template.
+        static let saveTemplate = "doc.badge.plus"
     }
 
     // MARK: - Home
@@ -135,11 +162,33 @@ enum Icons {
         /// Universe message affordance.
         static let universeMessage = "sparkles"
 
+        /// Smart Daily Agenda affordance.
+        static let agenda = "list.bullet.rectangle"
+
+
         /// Opening quotation mark for Universe Messages.
         static let quote = "quote.opening"
 
         /// Inspiration badge glyph.
         static let inspiration = "sparkles"
+    }
+
+    // MARK: - Universe
+
+    /// Universe Messages module symbols.
+    enum Universe {
+
+        /// Search field glyph on the history screen.
+        static let search = "magnifyingglass"
+
+        /// Favorite indicator (not favorited).
+        static let favorite = "star"
+
+        /// Favorite indicator (favorited).
+        static let favoriteFilled = "star.fill"
+
+        /// Native share affordance.
+        static let share = "square.and.arrow.up"
     }
 
     // MARK: - Status

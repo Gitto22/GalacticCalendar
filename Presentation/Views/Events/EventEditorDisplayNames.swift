@@ -46,10 +46,24 @@ enum EventEditorDisplayNames {
             String(localized: "event_repeat_daily")
         case .weekly:
             String(localized: "event_repeat_weekly")
+        case .biweekly:
+            String(localized: "event_repeat_biweekly")
         case .monthly:
             String(localized: "event_repeat_monthly")
         case .yearly:
             String(localized: "event_repeat_yearly")
+        }
+    }
+
+    /// Localized title for a recurrence end kind.
+    static func title(for endKind: RecurrenceEndKind) -> String {
+        switch endKind {
+        case .never:
+            String(localized: "event_repeat_end_never")
+        case .afterCount:
+            String(localized: "event_repeat_end_after_count")
+        case .onDate:
+            String(localized: "event_repeat_end_on_date")
         }
     }
 
@@ -84,13 +98,41 @@ enum EventEditorDisplayNames {
         switch priority {
         case .low:
             String(localized: "event_priority_low")
-        case .medium:
-            String(localized: "event_priority_medium")
+        case .normal:
+            String(localized: "event_priority_normal")
         case .high:
             String(localized: "event_priority_high")
-        case .critical:
-            String(localized: "event_priority_critical")
+        case .urgent:
+            String(localized: "event_priority_urgent")
         }
+    }
+
+    /// Localized title for a tag preset.
+    static func title(for preset: EventTagPreset) -> String {
+        switch preset {
+        case .work:
+            String(localized: "event_tag_work")
+        case .personal:
+            String(localized: "event_tag_personal")
+        case .health:
+            String(localized: "event_tag_health")
+        case .family:
+            String(localized: "event_tag_family")
+        case .travel:
+            String(localized: "event_tag_travel")
+        case .finances:
+            String(localized: "event_tag_finances")
+        case .studies:
+            String(localized: "event_tag_studies")
+        }
+    }
+
+    /// Localized title for any ``EventTag`` (preset or custom).
+    static func title(for tag: EventTag) -> String {
+        if let preset = tag.preset {
+            return title(for: preset)
+        }
+        return tag.customLabel ?? tag.id
     }
 
     // MARK: - Status
@@ -132,6 +174,8 @@ enum EventEditorDisplayNames {
             String(localized: "event_validation_invalid_repeat_interval")
         case .invalidRepeatEndDate:
             String(localized: "event_validation_invalid_repeat_end_date")
+        case .invalidRepeatOccurrenceCount:
+            String(localized: "event_validation_invalid_repeat_occurrence_count")
         }
     }
 
@@ -159,10 +203,32 @@ enum EventEditorDisplayNames {
             String(localized: "event_error_reminder_fire_date_in_past")
         case .catalogLoadFailed:
             String(localized: "event_error_catalog_load_failed")
+        case .templatesLoadFailed:
+            String(localized: "event_error_templates_load_failed")
         case .storeUnavailable:
             String(localized: "event_error_store_unavailable")
+        case .rollbackFailed:
+            String(localized: "event_error_rollback_failed")
+        case .dataCorruption:
+            String(localized: "event_error_data_corruption")
         case .unknown:
             String(localized: "event_error_unknown")
+        }
+    }
+
+    // MARK: - Color
+
+    /// Localized title for an event color token (VoiceOver / chips).
+    static func title(for color: EventColor) -> String {
+        switch color {
+        case .green:
+            String(localized: "event_color_green")
+        case .yellow:
+            String(localized: "event_color_yellow")
+        case .orange:
+            String(localized: "event_color_orange")
+        case .red:
+            String(localized: "event_color_red")
         }
     }
 }

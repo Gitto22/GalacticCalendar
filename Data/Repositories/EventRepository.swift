@@ -40,7 +40,7 @@ final class EventRepository: EventRepositoryProtocol {
     // MARK: - Create
 
     func create(_ event: Event) async throws {
-        let entity = EventEntityMapper.makeEntity(from: event)
+        let entity = try EventEntityMapper.makeEntity(from: event)
         modelContext.insert(entity)
         try save()
     }
@@ -52,11 +52,14 @@ final class EventRepository: EventRepositoryProtocol {
             sortBy: [SortDescriptor(\.date, order: .forward)]
         )
         let entities = try modelContext.fetch(descriptor)
-        return entities.map(EventEntityMapper.makeDomain(from:))
+        return try entities.map(EventEntityMapper.makeDomain(from:))
     }
 
     func fetch(by id: UUID) async throws -> Event? {
-        try fetchEntity(id: id).map(EventEntityMapper.makeDomain(from:))
+        guard let entity = try fetchEntity(id: id) else {
+            return nil
+        }
+        return try EventEntityMapper.makeDomain(from: entity)
     }
 
     func fetch(on date: Date) async throws -> [Event] {
@@ -81,7 +84,7 @@ final class EventRepository: EventRepositoryProtocol {
             sortBy: [SortDescriptor(\.date, order: .forward)]
         )
         let entities = try modelContext.fetch(descriptor)
-        return entities.map(EventEntityMapper.makeDomain(from:))
+        return try entities.map(EventEntityMapper.makeDomain(from:))
     }
 
     /// Fetches events in `interval` grouped by start-of-day.
@@ -94,13 +97,13 @@ final class EventRepository: EventRepositoryProtocol {
         }
     }
 
-    /// Returns events with a recurring ``RepeatRule``.
-    ///
-    /// Filters in domain space after fetch so both plain frequency strings and
-    /// versioned JSON envelopes are handled uniformly. Occurrences are not expanded.
-    func fetchRecurring() async throws -> [Event] {
+    func fetch(matching criteria: EventSearchCriteria) async throws -> [Event] {
         let all = try await fetchAll()
-        return all.filter(\.repeatRule.isRecurring)
+        guard criteria.isEmpty == false else {
+            return all
+        }
+        // Single pass after fetch; recurrence date expansion stays in the catalog.
+        return criteria.filter(all)
     }
 
     // MARK: - Update
@@ -110,7 +113,7 @@ final class EventRepository: EventRepositoryProtocol {
             throw EventRepositoryError.notFound(event.id)
         }
 
-        EventEntityMapper.apply(event.touchingUpdatedAt(), to: entity)
+        try EventEntityMapper.apply(event.touchingUpdatedAt(), to: entity)
         try save()
     }
 

@@ -102,7 +102,7 @@ final class EventEditorViewModelTests: XCTestCase {
             color: .green
         )
         let persistence = makePersistence(seed: [event])
-        try await persistence.bootstrap()
+        try await persistence.refresh()
 
         let viewModel = EventEditorViewModel(
             persistenceService: persistence,
@@ -124,7 +124,7 @@ final class EventEditorViewModelTests: XCTestCase {
             color: .green
         )
         let persistence = makePersistence(seed: [event])
-        try await persistence.bootstrap()
+        try await persistence.refresh()
 
         let viewModel = EventEditorViewModel(
             persistenceService: persistence,
@@ -173,6 +173,24 @@ final class EventEditorViewModelTests: XCTestCase {
 
         XCTAssertEqual(viewModel.endDate, start.addingTimeInterval(1_800))
         XCTAssertEqual(viewModel.timeZoneIdentifier, "UTC")
+        XCTAssertFalse(viewModel.isAllDay)
+    }
+
+    func testAllDayToggleHidesTimedSemanticsOnDraft() async {
+        let persistence = makePersistence()
+        let viewModel = EventEditorViewModel(
+            persistenceService: persistence,
+            initialDate: Date(timeIntervalSince1970: 1_900_000_000)
+        )
+        viewModel.timeZoneIdentifier = "UTC"
+        viewModel.title = "All day draft"
+        viewModel.reminderOption = .none
+        viewModel.isAllDay = true
+
+        await viewModel.createEvent()
+
+        XCTAssertTrue(viewModel.didCompleteMutation)
+        XCTAssertEqual(persistence.events.first?.isAllDay, true)
     }
 
     func testSaveEventRoutesByMode() async {
@@ -211,7 +229,8 @@ final class EventEditorViewModelTests: XCTestCase {
 
         XCTAssertFalse(viewModel.didCompleteMutation)
         XCTAssertEqual(viewModel.lastError, .reminderUnauthorized)
-        XCTAssertEqual(persistence.events.count, 1)
+        // Create rolls back the insert when reminder sync fails.
+        XCTAssertTrue(persistence.events.isEmpty)
     }
 }
 

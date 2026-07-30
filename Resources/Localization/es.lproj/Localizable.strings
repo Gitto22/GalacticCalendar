@@ -1,8 +1,84 @@
 ﻿/* Spanish localization for Galactic Calendar */
 
 "universe_message_body" = "El mejor momento para empezar es hoy.";
+"universe_message_body_02" = "Los pasos pequeños también te acercan.";
+"universe_message_body_03" = "Tu constancia puede más que tus dudas.";
+"universe_message_body_04" = "Repara en una cosa buena que ya te rodea.";
+"universe_message_body_05" = "Formas parte de algo vasto y amable.";
+"universe_message_body_06" = "Empieza de nuevo sin pedirte perdón.";
+"universe_message_body_07" = "El progreso silencioso también cuenta.";
+"universe_message_body_08" = "Alguien se alegra de que hoy hayas aparecido.";
 "universe_message_caption" = "Mensaje del Universo";
 "universe_message_inspiration" = "Inspiración";
+
+"universe_category_motivation" = "Motivación";
+"universe_category_productivity" = "Productividad";
+"universe_category_calm" = "Calma";
+"universe_category_reflection" = "Reflexión";
+"universe_category_gratitude" = "Gratitud";
+"universe_category_relationships" = "Relaciones";
+"universe_category_success" = "Éxito";
+"universe_category_personal_growth" = "Crecimiento personal";
+"universe_history_category_all" = "Todas";
+
+"universe_history_title" = "Historial de Mensajes";
+"universe_history_search_placeholder" = "Buscar mensajes o categorías";
+"universe_history_empty_title" = "Aún no hay mensajes";
+"universe_history_empty_message" = "Aquí aparecerán tus mensajes diarios del Universo.";
+"universe_history_search_empty" = "Ningún mensaje coincide con tu búsqueda.";
+"universe_history_favorite_a11y_on" = "Favorito";
+"universe_history_favorite_a11y_off" = "No es favorito";
+"universe_history_filter_all" = "Todos";
+"universe_history_filter_favorites" = "Favoritos";
+"universe_history_favorites_empty" = "Aún no hay mensajes favoritos.";
+
+"universe_detail_title" = "Detalle del mensaje";
+"universe_detail_share" = "Compartir";
+
+"universe_share_headline" = "Mensaje del Universo";
+"universe_share_app_name" = "Galactic Calendar";
+"universe_share_empty_message" = "(Sin texto de mensaje)";
+"universe_share_payload_format" = "%1$@\n\n%2$@\n\n%3$@\n\n%4$@";
+"universe_share_a11y" = "Compartir mensaje";
+
+"calendar_month_previous_a11y" = "Mes anterior";
+"calendar_month_next_a11y" = "Mes siguiente";
+"calendar_month_picker_title" = "Seleccionar mes";
+"calendar_month_picker_a11y_hint" = "Abre el selector de mes";
+"calendar_year_picker_title" = "Seleccionar año";
+"calendar_year_picker_a11y_hint" = "Abre el selector de año";
+"calendar_today_a11y" = "Ir a hoy";
+"calendar_month_swipe_a11y_hint" = "Desliza a izquierda o derecha para cambiar de mes";
+"calendar_day_today_a11y" = "Hoy";
+"calendar_day_selected_a11y" = "Seleccionado";
+"calendar_day_not_selected_a11y" = "No seleccionado";
+"calendar_day_events_a11y" = "%lld eventos";
+"calendar_day_a11y_hint" = "Toca dos veces para abrir los eventos de este día";
+"calendar_month_previous_a11y_hint" = "Muestra el mes anterior";
+"calendar_month_next_a11y_hint" = "Muestra el mes siguiente";
+"calendar_today_a11y_hint" = "Salta a la fecha de hoy";
+"calendar_month_picker_row_a11y_hint" = "Toca dos veces para seleccionar este mes";
+"calendar_year_picker_row_a11y_hint" = "Toca dos veces para seleccionar este año";
+"navigation_menu_a11y" = "Menú";
+"navigation_menu_a11y_hint" = "Abre Historial, Búsqueda y Agenda diaria";
+
+"universe_message_card_a11y_hint" = "Toca dos veces para abrir el detalle del mensaje";
+"universe_history_row_a11y_hint" = "Toca dos veces para abrir el detalle del mensaje";
+"universe_favorite_a11y_hint" = "Toca dos veces para marcar o desmarcar favorito";
+"universe_filter_a11y_hint" = "Toca dos veces para aplicar este filtro";
+"universe_close_a11y_hint" = "Cierra esta pantalla";
+
+"day_events_templates_a11y_hint" = "Abre las plantillas de eventos";
+"day_events_close_a11y_hint" = "Cierra los eventos del día";
+"day_events_new_event_a11y_hint" = "Crea un evento nuevo para este día";
+"event_create_from_template_a11y_hint" = "Crea un evento desde una plantilla";
+"event_editor_close_a11y_hint" = "Cierra el editor";
+"event_editor_confirm_a11y_hint" = "Guarda el evento";
+"event_save_as_template_a11y_hint" = "Guarda el evento actual como plantilla";
+"event_delete_a11y_hint" = "Elimina este evento";
+"event_color_a11y_hint" = "Toca dos veces para seleccionar este color";
+"event_search_close_a11y_hint" = "Cierra la búsqueda de eventos";
+"event_search_filter_a11y_hint" = "Toca dos veces para activar o desactivar este filtro";
 
 "weekday_mon_short" = "LUN";
 "weekday_tue_short" = "MAR";
@@ -19,13 +95,20 @@
 "event_field_reminder" = "Recordatorio";
 "event_field_repeat" = "Repetición";
 "event_field_category" = "Categoría";
+"event_field_tags" = "Etiquetas";
 "event_field_priority" = "Prioridad";
 "event_field_status" = "Estado";
 "event_field_color" = "Color del evento";
 "event_field_date" = "Fecha";
-"event_field_start_time" = "Inicio";
-"event_field_end_time" = "Fin";
+"event_field_start_date" = "Inicio";
+"event_field_end_date" = "Fin";
+"event_field_all_day" = "Todo el día";
+"event_field_start_time" = "Hora inicio";
+"event_field_end_time" = "Hora fin";
 "event_field_timezone" = "Zona horaria";
+"event_all_day_label" = "Todo el día";
+"event_multi_day_all_day_format" = "Todo el día · %@ – %@";
+"event_multi_day_timed_format" = "%@ – %@";
 "event_save_button" = "Guardar evento";
 "event_delete_button" = "Eliminar evento";
 "event_delete_confirm_title" = "Eliminar evento";
@@ -45,8 +128,15 @@
 "event_repeat_none" = "No repetir";
 "event_repeat_daily" = "Cada día";
 "event_repeat_weekly" = "Cada semana";
+"event_repeat_biweekly" = "Cada 2 semanas";
 "event_repeat_monthly" = "Cada mes";
 "event_repeat_yearly" = "Cada año";
+"event_repeat_end_never" = "Nunca";
+"event_repeat_end_after_count" = "Tras repeticiones";
+"event_repeat_end_on_date" = "En una fecha";
+"event_field_repeat_end" = "Finaliza";
+"event_field_repeat_count" = "Repeticiones";
+"event_field_repeat_end_date" = "Fecha final";
 
 "event_category_work" = "Trabajo";
 "event_category_personal" = "Personal";
@@ -58,9 +148,18 @@
 "event_category_other" = "Otro";
 
 "event_priority_low" = "Baja";
-"event_priority_medium" = "Media";
+"event_priority_normal" = "Normal";
+"event_priority_medium" = "Normal";
 "event_priority_high" = "Alta";
-"event_priority_critical" = "Crítica";
+"event_priority_urgent" = "Urgente";
+"event_priority_critical" = "Urgente";
+"event_tag_work" = "Trabajo";
+"event_tag_personal" = "Personal";
+"event_tag_health" = "Salud";
+"event_tag_family" = "Familia";
+"event_tag_travel" = "Viaje";
+"event_tag_finances" = "Finanzas";
+"event_tag_studies" = "Estudios";
 
 "event_status_pending" = "Pendiente";
 "event_status_in_progress" = "En curso";
@@ -70,9 +169,81 @@
 "day_events_title" = "Eventos del día";
 "day_events_close" = "Cerrar";
 "day_events_new_event" = "Nuevo evento";
+"day_events_all_day_section" = "Todo el día";
+"day_events_timed_section" = "Con hora";
 "day_events_action_edit" = "Editar";
 "day_events_action_duplicate" = "Duplicar";
+"day_events_action_move" = "Mover";
+"day_events_action_copy" = "Copiar";
 "day_events_action_delete" = "Eliminar";
+"day_events_row_a11y_hint" = "Toca dos veces para editar. Mantén pulsado para Editar, Duplicar, Mover, Copiar o Eliminar.";
+
+"event_search_title" = "Buscar eventos";
+"event_search_close" = "Cerrar";
+"event_search_placeholder" = "Título, notas o etiquetas";
+"event_search_clear" = "Limpiar";
+"event_search_prompt" = "Escribe o elige filtros para encontrar eventos.";
+"event_search_empty" = "Ningún evento coincide con estos filtros.";
+"event_search_results_count_format" = "%d resultados";
+"event_search_range_any" = "Cualquier fecha";
+"event_search_range_today" = "Hoy";
+"event_search_range_week" = "Esta semana";
+"event_search_range_month" = "Este mes";
+"event_search_filter_multiday" = "Multidía";
+"event_search_filter_recurring" = "Recurrente";
+"event_search_filter_reminder" = "Con recordatorio";
+"event_search_filter_not_format" = "No %@";
+
+"agenda_title" = "Agenda del día";
+"agenda_close" = "Cerrar";
+"agenda_today" = "Hoy";
+"agenda_previous_day_a11y" = "Día anterior";
+"agenda_next_day_a11y" = "Día siguiente";
+"agenda_metric_events" = "Eventos";
+"agenda_metric_occupied" = "Ocupado";
+"agenda_metric_free" = "Libre";
+"agenda_timeline_title" = "Timeline";
+"agenda_timeline_empty" = "No hay eventos con hora en esta ventana.";
+"agenda_all_day_title" = "Todo el día";
+"agenda_empty_day" = "No hay eventos. Disfruta del día libre.";
+"agenda_next_event_title" = "Próximo evento";
+"agenda_free_time_title" = "Tiempo libre";
+"agenda_end_of_day_title" = "Final del día";
+"agenda_completed_format" = "Has completado %d eventos";
+"agenda_duration_hm_format" = "%dh %dm";
+"agenda_duration_h_format" = "%dh";
+"agenda_duration_m_format" = "%dm";
+"agenda_time_range_format" = "%@–%@";
+
+"event_quick_op_move_title" = "Mover evento";
+"event_quick_op_copy_title" = "Copiar a otra fecha";
+"event_quick_op_move_confirm" = "Mover";
+"event_quick_op_copy_confirm" = "Copiar";
+
+"event_create_from_template" = "Crear desde plantilla";
+"event_save_as_template" = "Guardar como plantilla";
+"event_templates_title" = "Plantillas de eventos";
+"event_templates_close" = "Cerrar";
+"event_templates_empty" = "Aún no hay plantillas. Guarda un evento como plantilla o crea una desde cero.";
+"event_templates_new" = "Nueva plantilla";
+"event_templates_manage" = "Gestionar plantillas";
+"event_template_picker_title" = "Crear desde plantilla";
+"event_template_editor_create_title" = "Nueva plantilla";
+"event_template_editor_edit_title" = "Editar plantilla";
+"event_template_field_name" = "Nombre de la plantilla";
+"event_template_field_duration" = "Duración";
+"event_template_duration_30m" = "30 minutos";
+"event_template_duration_1h" = "1 hora";
+"event_template_duration_2h" = "2 horas";
+"event_template_duration_all_day" = "Todo el día";
+"event_template_duration_minutes_format" = "%d min";
+"event_template_action_duplicate" = "Duplicar";
+"event_template_copy_suffix" = "Copia";
+"event_template_delete_confirm_title" = "¿Eliminar plantilla?";
+"event_template_delete_confirm_action" = "Eliminar";
+"event_template_delete_confirm_message" = "Se eliminará esta plantilla. Los eventos existentes no se verán afectados.";
+"event_template_save_success" = "Plantilla guardada";
+"event_template_error_save_failed" = "No se pudo guardar la plantilla.";
 
 "event_validation_title_required" = "El título es obligatorio.";
 "event_validation_title_too_long" = "El título no puede superar %d caracteres.";
@@ -83,6 +254,7 @@
 "event_validation_invalid_reminder" = "El recordatorio no es válido respecto a la fecha del evento.";
 "event_validation_invalid_repeat_interval" = "El intervalo de repetición no es válido.";
 "event_validation_invalid_repeat_end_date" = "La fecha de fin de la repetición no es válida.";
+"event_validation_invalid_repeat_occurrence_count" = "El número de repeticiones no es válido.";
 
 "event_error_alert_title" = "No se pudo completar la acción";
 "event_error_alert_dismiss" = "Entendido";
@@ -92,7 +264,19 @@
 "event_error_reminder_scheduling_failed" = "No se pudo programar el recordatorio.";
 "event_error_reminder_fire_date_in_past" = "La fecha del recordatorio ya ha pasado.";
 "event_error_catalog_load_failed" = "No se pudieron cargar los eventos.";
-"event_error_store_unavailable" = "El almacenamiento local no está disponible. Los cambios pueden no guardarse.";
+"event_error_templates_load_failed" = "No se pudieron cargar las plantillas de eventos.";
+"event_error_store_unavailable" = "No se pudo abrir el almacenamiento local. Crear, editar y eliminar eventos está desactivado para no perder tus datos.";
+"event_error_rollback_failed" = "No se pudo revertir el cambio por completo. Revisa tus eventos e inténtalo de nuevo.";
+"event_error_data_corruption" = "Algunos datos de eventos guardados no se pueden leer y no se cargaron.";
 "event_error_unknown" = "Ha ocurrido un error inesperado.";
+"event_color_green" = "Verde";
+"event_color_yellow" = "Amarillo";
+"event_color_orange" = "Naranja";
+"event_color_red" = "Rojo";
+"event_search_result_a11y_hint" = "Toca dos veces para seleccionar este evento.";
+"agenda_event_a11y_hint" = "Toca dos veces para editar este evento.";
+"event_template_error_corrupt_data" = "Algunos datos de plantillas guardados no se pueden leer y no se cargaron.";
 
 "event_save_success" = "Evento guardado";
+
+"app_notification_permission_purpose" = "Galactic Calendar usa notificaciones locales para recordarte tus eventos.";

@@ -6,26 +6,50 @@
 import Foundation
 
 /// Priority level for a Galactic Calendar event.
+///
+/// ## Persistence
+/// Raw values are CloudKit-friendly. Legacy `medium` / `critical` decode as
+/// ``normal`` / ``urgent`` via ``init(persisted:)``.
 enum EventPriority: String, Sendable, CaseIterable, Codable, Hashable, Identifiable, Comparable {
 
     // MARK: - Cases
 
-    /// Low priority.
+    /// Low priority (Baja).
     case low
 
-    /// Medium priority.
-    case medium
+    /// Normal priority (Normal).
+    case normal
 
-    /// High priority.
+    /// High priority (Alta).
     case high
 
-    /// Critical priority.
-    case critical
+    /// Urgent priority (Urgente).
+    case urgent
 
     // MARK: - Identifiable
 
-    /// Stable identifier matching the raw value.
+    /// Stable identifier matching the persistence raw value.
     var id: String { rawValue }
+
+    // MARK: - Persistence
+
+    /// Decodes a stored raw value, mapping legacy tokens.
+    /// - Parameter rawValue: Persisted string.
+    /// - Returns: Priority, or `nil` when unknown.
+    init?(persisted rawValue: String) {
+        if let value = EventPriority(rawValue: rawValue) {
+            self = value
+            return
+        }
+        switch rawValue {
+        case "medium":
+            self = .normal
+        case "critical":
+            self = .urgent
+        default:
+            return nil
+        }
+    }
 
     // MARK: - Comparable
 
@@ -33,9 +57,9 @@ enum EventPriority: String, Sendable, CaseIterable, Codable, Hashable, Identifia
     private var sortIndex: Int {
         switch self {
         case .low: 0
-        case .medium: 1
+        case .normal: 1
         case .high: 2
-        case .critical: 3
+        case .urgent: 3
         }
     }
 

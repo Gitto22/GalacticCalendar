@@ -48,8 +48,12 @@ final class InMemoryEventRepository: EventRepositoryProtocol {
         return Dictionary(grouping: events) { Calendar.current.startOfDay(for: $0.date) }
     }
 
-    func fetchRecurring() async throws -> [Event] {
-        storage.values.filter(\.repeatRule.isRecurring)
+    func fetch(matching criteria: EventSearchCriteria) async throws -> [Event] {
+        let all = Array(storage.values)
+        guard criteria.isEmpty == false else {
+            return all
+        }
+        return criteria.filter(all)
     }
 
     func update(_ event: Event) async throws {

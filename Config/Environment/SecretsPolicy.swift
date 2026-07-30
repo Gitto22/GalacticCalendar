@@ -1,15 +1,15 @@
-﻿//
-//  SecretsPlaceholder.swift
+//
+//  SecretsPolicy.swift
 //  GalacticCalendar
 //
 
 import Foundation
 
-/// Marks the intentional absence of secrets inside the repository.
+/// Documents the repository policy for secrets and credentials.
 ///
 /// Sensitive values must be supplied through secure configuration
-/// mechanisms outside source control.
-enum SecretsPlaceholder {
+/// mechanisms outside source control — never committed to git.
+enum SecretsPolicy {
 
     // MARK: - Guidance
 

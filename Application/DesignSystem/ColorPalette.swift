@@ -95,7 +95,32 @@ enum ColorPalette {
     )
 
     /// Overlay scrim used above imagery when readability must be preserved.
-    static let overlay = Color.black.opacity(0.28)
+    ///
+    /// Prefer ``overlay(for:)`` / ``readabilityGradient(for:)`` so intensity
+    /// tracks ``MonthContrastProfile``. This token matches ``MonthContrastProfile/standard``.
+    static let overlay = Color.black.opacity(MonthContrastProfile.standard.baseScrimOpacity)
+
+    /// Uniform scrim for a monthly contrast profile.
+    static func overlay(for profile: MonthContrastProfile) -> Color {
+        Color.black.opacity(profile.baseScrimOpacity)
+    }
+
+    /// Vertical readability gradient (header → calendar band → bottom).
+    ///
+    /// Darkens chrome zones while keeping mid-image presence; does not replace
+    /// glass card / day-cell fills.
+    static func readabilityGradient(for profile: MonthContrastProfile) -> LinearGradient {
+        LinearGradient(
+            stops: [
+                .init(color: Color.black.opacity(profile.topGradientOpacity), location: 0.00),
+                .init(color: Color.black.opacity(profile.midGradientOpacity), location: 0.28),
+                .init(color: Color.black.opacity(profile.midGradientOpacity * 0.85), location: 0.55),
+                .init(color: Color.black.opacity(profile.bottomGradientOpacity), location: 1.00)
+            ],
+            startPoint: .top,
+            endPoint: .bottom
+        )
+    }
 
     // MARK: - On Image (Home)
 
@@ -195,6 +220,9 @@ enum ColorPalette {
     static let editorTileFill = Color.black.opacity(0.35)
 
     /// Returns the Design System color for an event color token.
+    /// Resolves a domain ``EventColor`` token to a Design System color.
+    ///
+    /// This is the **only** allowed mapping for event accents — no arbitrary colors.
     static func color(for eventColor: EventColor) -> Color {
         switch eventColor {
         case .green: eventColorGreen

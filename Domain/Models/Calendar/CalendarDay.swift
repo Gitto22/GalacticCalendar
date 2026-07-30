@@ -58,6 +58,9 @@ struct CalendarDay: Identifiable, Equatable, Sendable, Hashable, Codable {
     /// Up to four ``EventColor`` values used by calendar indicators.
     var eventColors: [EventColor]
 
+    /// Richer indicator tokens (color + reserved priority). Drives ``eventColors``.
+    var eventIndicators: [CalendarEventIndicator]
+
     /// Indicates whether the day has associated events.
     var hasEvents: Bool {
         eventCount > 0
@@ -79,7 +82,8 @@ struct CalendarDay: Identifiable, Equatable, Sendable, Hashable, Codable {
         isToday: Bool,
         isSelected: Bool = false,
         eventCount: Int = 0,
-        eventColors: [EventColor] = []
+        eventColors: [EventColor] = [],
+        eventIndicators: [CalendarEventIndicator] = []
     ) {
         self.id = id
         self.date = date
@@ -88,7 +92,11 @@ struct CalendarDay: Identifiable, Equatable, Sendable, Hashable, Codable {
         self.isToday = isToday
         self.isSelected = isSelected
         self.eventCount = max(0, eventCount)
-        self.eventColors = Array(eventColors.prefix(4))
+        let indicators = eventIndicators.isEmpty
+            ? eventColors.map { CalendarEventIndicator(id: $0.rawValue, color: $0) }
+            : Array(eventIndicators.prefix(4))
+        self.eventIndicators = indicators
+        self.eventColors = indicators.map(\.color)
     }
 }
 
@@ -102,7 +110,8 @@ extension CalendarDay {
     func applyingEvents(_ events: [Event]) -> CalendarDay {
         var copy = self
         copy.eventCount = events.count
-        copy.eventColors = Array(events.prefix(4).map(\.color))
+        copy.eventIndicators = CalendarEventIndicator.indicators(from: events)
+        copy.eventColors = copy.eventIndicators.map(\.color)
         return copy
     }
 }

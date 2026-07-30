@@ -2,5 +2,10 @@
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
+	<!--
+		iOS / multiplatform entitlements for Galactic Calendar.
+		CloudKit, Push, App Groups, and StoreKit capabilities intentionally omitted.
+		Enable only when the matching feature flag ships.
+	-->
 </dict>
 </plist>

@@ -15,6 +15,10 @@ import SwiftUI
 /// Colors come exclusively from ``EventColor`` via ``ColorPalette``.
 struct EventIndicatorsView: View {
 
+    // MARK: - Environment
+
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
+
     // MARK: - Properties
 
     /// Domain event colors for visible indicators (max four).
@@ -54,10 +58,20 @@ struct EventIndicatorsView: View {
         .frame(maxWidth: .infinity)
         .frame(height: LayoutConstants.eventIndicatorSize)
         .opacity(eventColors.isEmpty ? 0 : 1)
+        .animation(
+            Motion.resolved(Motion.calendarEvents, reduceMotion: reduceMotion),
+            value: appearanceToken
+        )
         .accessibilityHidden(true)
     }
 
     // MARK: - Derived
+
+    /// Stable token so indicators animate when count/colors change with the month.
+    private var appearanceToken: String {
+        let colors = eventColors.map(\.rawValue).joined(separator: ",")
+        return "\(totalCount)-\(colors)"
+    }
 
     /// `true` when more events exist than visible indicator slots.
     private var showsOverflow: Bool {

@@ -17,4 +17,7 @@ enum EventRepositoryError: Error, Equatable, Sendable {
 
     /// A save operation failed.
     case saveFailed
+
+    /// Persisted row could not be mapped without inventing domain values.
+    case corruptData
 }

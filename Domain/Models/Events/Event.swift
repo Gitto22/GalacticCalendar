@@ -24,10 +24,22 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
     var description: String
 
     /// Start date and time of the event (absolute instant).
+    ///
+    /// Persisted field name kept as `date` for SwiftData / CloudKit compatibility.
+    /// Prefer ``startDate`` at call sites. For all-day events, normalized to the
+    /// start of the calendar day in ``timeZoneIdentifier`` (see ``EventSchedule``).
     var date: Date
 
     /// Optional end date and time (absolute instant). `nil` means no explicit end.
+    ///
+    /// For all-day events, normalized to the end of the last calendar day in the
+    /// span. A later-day value creates a multi-day event (``isMultiDay``).
     var endDate: Date?
+
+    /// `true` when the event occupies whole calendar day(s) (no wall-clock times).
+    ///
+    /// Compatible with future recurrence expansion and CloudKit mirroring.
+    var isAllDay: Bool
 
     /// IANA time zone identifier used when the schedule was edited.
     ///
@@ -38,21 +50,31 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
     /// Optional reminder fire date.
     var reminder: Date?
 
-    /// Recurrence rule (stored and restored; occurrences are not expanded yet).
+    /// Recurrence rule (stored and restored).
+    ///
+    /// Occurrences are expanded dynamically by ``RecurrenceEngine`` — never
+    /// persisted as separate rows. Reserved fields on ``RecurrenceRule``
+    /// (`byWeekdays`, `excludedDates`, custom payload) prepare Sprint 6.4+.
     var repeatRule: RepeatRule
 
     // MARK: - Classification
 
-    /// Event category.
+    /// Legacy single category (kept for CloudKit / older clients).
+    ///
+    /// Prefer ``tags`` for multi-label organization. When tags include presets,
+    /// ``category`` is synced from the first preset for compatibility.
     var category: EventCategory
 
-    /// Event priority.
+    /// Zero or more organization tags (presets + future custom).
+    var tags: [EventTag]
+
+    /// Event priority (low / normal / high / urgent).
     var priority: EventPriority
 
     /// Event status.
     var status: EventStatus
 
-    /// Event accent color token.
+    /// Event accent color token from the Design System palette.
     var color: EventColor
 
     // MARK: - Timestamps
@@ -72,13 +94,15 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
     ///   - description: Event description.
     ///   - date: Start date and time.
     ///   - endDate: Optional end date and time.
+    ///   - isAllDay: Whether the event is all-day.
     ///   - timeZoneIdentifier: IANA time zone id. Defaults to the current zone.
     ///   - reminder: Optional reminder date.
     ///   - repeatRule: Recurrence rule.
-    ///   - category: Category.
+    ///   - category: Legacy single category.
+    ///   - tags: Organization tags (multiple allowed).
     ///   - priority: Priority.
     ///   - status: Status.
-    ///   - color: Color token.
+    ///   - color: Color token from the Design System palette.
     ///   - createdAt: Creation date.
     ///   - updatedAt: Last update date.
     init(
@@ -87,11 +111,13 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
         description: String = "",
         date: Date,
         endDate: Date? = nil,
+        isAllDay: Bool = false,
         timeZoneIdentifier: String = TimeZone.current.identifier,
         reminder: Date? = nil,
         repeatRule: RepeatRule = .none,
         category: EventCategory = .other,
-        priority: EventPriority = .medium,
+        tags: [EventTag] = [],
+        priority: EventPriority = .normal,
         status: EventStatus = .pending,
         color: EventColor = .green,
         createdAt: Date = Date(),
@@ -102,10 +128,20 @@ struct Event: Identifiable, Equatable, Sendable, Hashable, Codable {
         self.description = description
         self.date = date
         self.endDate = endDate
+        self.isAllDay = isAllDay
         self.timeZoneIdentifier = timeZoneIdentifier
         self.reminder = reminder
         self.repeatRule = repeatRule
-        self.category = category
+        if tags.isEmpty, let preset = EventTagPreset.from(category: category) {
+            self.tags = [.preset(preset)]
+        } else {
+            self.tags = tags
+        }
+        if let firstPreset = self.tags.compactMap(\.preset).first {
+            self.category = firstPreset.asCategory
+        } else {
+            self.category = category
+        }
         self.priority = priority
         self.status = status
         self.color = color
@@ -127,40 +163,113 @@ extension Event {
         return copy
     }
 
-    /// Returns a new event ready to be persisted as a duplicate.
+    /// Returns a new event ready to be persisted as a duplicate / copy.
     ///
-    /// Copies content fields (including ``repeatRule``) and assigns a fresh identity.
-    /// - Parameter date: Optional date override for the duplicate. Defaults to the source date.
+    /// Copies content fields (title, description/notes, color, tags, priority,
+    /// recurrence, duration, all-day, time zone). Assigns a fresh identity and
+    /// resets ``status`` to ``EventStatus/pending``.
+    ///
+    /// Does **not** keep the source absolute date/time unless ``date`` is omitted
+    /// (then the schedule is still rematerialized with a recomputed reminder).
+    /// Reminder fire dates are recomputed from the relative offset of the source.
+    /// - Parameter date: Optional start override for the duplicate.
     /// - Returns: Independent event copy suitable for ``EventPersistenceService/create(_:)``.
     func duplicated(on date: Date? = nil) -> Event {
         let now = Date()
         let start = date ?? self.date
-        let resolvedEnd: Date? = {
-            guard let endDate else {
-                return nil
-            }
-            guard let date else {
-                return endDate
-            }
-            let duration = endDate.timeIntervalSince(self.date)
-            return start.addingTimeInterval(duration)
-        }()
+        let bounds = EventSchedule.shiftedBounds(
+            date: self.date,
+            endDate: endDate,
+            to: start,
+            isAllDay: isAllDay,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+        let reminderOffset = EventReminderOption.option(for: reminder, eventDate: self.date)
+        let resolvedReminder = reminderOffset.reminderDate(relativeTo: bounds.date)
 
         return Event(
             id: UUID(),
             title: title,
             description: description,
-            date: start,
-            endDate: resolvedEnd,
+            date: bounds.date,
+            endDate: bounds.endDate,
+            isAllDay: isAllDay,
             timeZoneIdentifier: timeZoneIdentifier,
-            reminder: reminder,
+            reminder: resolvedReminder,
             repeatRule: repeatRule,
             category: category,
+            tags: tags,
             priority: priority,
-            status: status,
+            status: .pending,
             color: color,
             createdAt: now,
             updatedAt: now
+        )
+    }
+
+    /// Returns this event with its schedule moved to ``newStart`` (same identity).
+    ///
+    /// Preserves content, status, recurrence, and relative reminder offset.
+    /// Used by Move / Reprogramar quick operations.
+    /// - Parameter newStart: Absolute start after the move / reschedule.
+    /// - Returns: Updated snapshot for ``EventPersistenceService/update(_:)``.
+    func rescheduled(to newStart: Date) -> Event {
+        let bounds = EventSchedule.shiftedBounds(
+            date: date,
+            endDate: endDate,
+            to: newStart,
+            isAllDay: isAllDay,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+        let reminderOffset = EventReminderOption.option(for: reminder, eventDate: date)
+        var copy = self
+        copy.date = bounds.date
+        copy.endDate = bounds.endDate
+        copy.reminder = reminderOffset.reminderDate(relativeTo: bounds.date)
+        copy.updatedAt = Date()
+        return copy
+    }
+}
+
+// MARK: - Schedule Helpers
+
+extension Event {
+
+    /// Start of the event (alias of ``date`` for multi-day / editor APIs).
+    ///
+    /// Not a separate persistence column — keeps CloudKit / legacy rows compatible.
+    var startDate: Date {
+        get { date }
+        set { date = newValue }
+    }
+
+    /// `true` when ``endDate`` falls on a different calendar day than ``startDate``.
+    var isMultiDay: Bool {
+        EventSchedule.spansMultipleCalendarDays(
+            date: date,
+            endDate: endDate,
+            timeZoneIdentifier: timeZoneIdentifier
+        )
+    }
+
+    /// `true` when ``endDate`` falls on a different calendar day than ``date``.
+    ///
+    /// Prefer ``isMultiDay``; kept as a synonym for Sprint 6.1 call sites.
+    var spansMultipleCalendarDays: Bool {
+        isMultiDay
+    }
+
+    /// Returns whether this event should appear on the given calendar day.
+    /// - Parameters:
+    ///   - day: Any instant on the queried day.
+    ///   - calendar: Calendar for day boundaries.
+    /// - Returns: `true` when the schedule overlaps that day.
+    func occurs(on day: Date, calendar: Calendar = .current) -> Bool {
+        EventSchedule.occurs(
+            on: day,
+            start: startDate,
+            end: endDate,
+            calendar: calendar
         )
     }
 }

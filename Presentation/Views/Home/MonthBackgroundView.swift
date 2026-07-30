@@ -7,34 +7,62 @@ import SwiftUI
 
 /// Full-screen monthly background loaded from `Assets/Months`.
 ///
-/// Uses ``ThemeManager`` to resolve the asset for the current month.
-/// Does not generate artwork.
+/// Uses ``CalendarAppearanceManager`` to resolve the asset for the **active** displayed month
+/// (including navigation overrides). Crossfades discreetly when the month changes.
+///
+/// Applies a dynamic readability scrim + vertical gradient from
+/// ``MonthContrastProfile`` so Header, Calendar, cards, and Universe chrome
+/// remain legible without changing approved layout or surface styling.
 struct MonthBackgroundView: View {
 
     // MARK: - Environment
 
-    /// Theme authority that maps months to asset names.
-    @Environment(ThemeManager.self) private var themeManager
+    /// Calendar appearance authority that maps months to asset names.
+    @Environment(CalendarAppearanceManager.self) private var calendarAppearance
+
+    /// Honors system Reduce Motion.
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     // MARK: - Body
 
     var body: some View {
         GeometryReader { geometry in
-            Image(currentMonthAssetName)
-                .resizable()
-                .scaledToFill()
-                .frame(width: geometry.size.width, height: geometry.size.height)
-                .clipped()
+            ZStack {
+                Image(activeMonthAssetName)
+                    .resizable()
+                    .scaledToFill()
+                    .frame(width: geometry.size.width, height: geometry.size.height)
+                    .clipped()
+
+                ColorPalette.overlay(for: contrastProfile)
+                    .allowsHitTesting(false)
+
+                ColorPalette.readabilityGradient(for: contrastProfile)
+                    .allowsHitTesting(false)
+            }
+            .frame(width: geometry.size.width, height: geometry.size.height)
+            .clipped()
+            .id(activeMonthAssetName)
+            .transition(.opacity)
         }
         .ignoresSafeArea()
+        .animation(
+            Motion.resolved(Motion.calendarBackground, reduceMotion: reduceMotion),
+            value: activeMonthAssetName
+        )
         .accessibilityHidden(true)
     }
 
     // MARK: - Asset Resolution
 
-    /// Asset name for the device's current month via ``ThemeManager``.
-    private var currentMonthAssetName: String {
-        themeManager.currentBackgroundAsset()
+    /// Asset name for the active (displayed) month via ``CalendarAppearanceManager``.
+    private var activeMonthAssetName: String {
+        calendarAppearance.activeMonthBackgroundName
+    }
+
+    /// Active month contrast treatment via ``CalendarAppearanceManager``.
+    private var contrastProfile: MonthContrastProfile {
+        calendarAppearance.activeMonthContrastProfile
     }
 }
 
@@ -43,6 +71,13 @@ struct MonthBackgroundView: View {
 #if DEBUG
 #Preview("Month Background") {
     MonthBackgroundView()
-        .environment(ThemeManager())
+        .environment(CalendarAppearanceManager())
+}
+
+#Preview("Month Background — Strong (March)") {
+    let appearance = CalendarAppearanceManager()
+    appearance.prepareDisplayedMonth(3, year: 2026)
+    return MonthBackgroundView()
+        .environment(appearance)
 }
 #endif

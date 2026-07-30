@@ -50,6 +50,16 @@ struct CalendarEngine: CalendarGenerating, Sendable {
         calendar.component(.year, from: today)
     }
 
+    /// Returns the day-of-month for the engine's reference "today".
+    func currentDayOfMonth() -> Int {
+        calendar.component(.day, from: today)
+    }
+
+    /// Returns whether ``month``/``year`` matches the engine's current period.
+    func isCurrentPeriod(month: Int, year: Int) -> Bool {
+        month == currentMonth() && year == currentYear()
+    }
+
     // MARK: - Month Metrics
 
     /// Returns the number of days in the provided month.
@@ -71,6 +81,109 @@ struct CalendarEngine: CalendarGenerating, Sendable {
     /// - Returns: `true` when February contains 29 days.
     func isLeapYear(_ year: Int) -> Bool {
         numberOfDays(in: 2, year: year) == 29
+    }
+
+    /// Returns the month/year obtained by adding ``value`` months to a period.
+    ///
+    /// Preserves year correctly across December ↔ January boundaries.
+    /// - Parameters:
+    ///   - value: Month delta (negative = previous, positive = next).
+    ///   - month: Month number in `1...12`.
+    ///   - year: Full year value.
+    /// - Returns: Normalized `(month, year)`, or `nil` when inputs are invalid.
+    func monthByAdding(_ value: Int, toMonth month: Int, year: Int) -> (month: Int, year: Int)? {
+        guard month >= 1, month <= 12 else {
+            return nil
+        }
+        guard let anchor = firstDayOfMonth(month: month, year: year),
+              let shifted = calendar.date(byAdding: .month, value: value, to: anchor) else {
+            return nil
+        }
+        return (
+            month: calendar.component(.month, from: shifted),
+            year: calendar.component(.year, from: shifted)
+        )
+    }
+
+    /// Returns the month/year obtained by applying a navigation intent.
+    ///
+    /// Used by swipe and chevron navigation so multi-step flicks resolve in one jump.
+    /// - Parameters:
+    ///   - intent: Direction and step count.
+    ///   - month: Starting month (`1...12`).
+    ///   - year: Starting year.
+    /// - Returns: Target period, or `nil` when inputs are invalid.
+    func period(
+        after intent: CalendarMonthNavigationIntent,
+        fromMonth month: Int,
+        year: Int
+    ) -> (month: Int, year: Int)? {
+        monthByAdding(intent.monthOffset, toMonth: month, year: year)
+    }
+
+    /// Clamps a day-of-month into the valid range for ``month``/``year``.
+    ///
+    /// Used when preserving selection across months with different lengths
+    /// (e.g. 31 → February becomes 28/29).
+    /// - Parameters:
+    ///   - day: Preferred day-of-month.
+    ///   - month: Target month (`1...12`).
+    ///   - year: Target year.
+    /// - Returns: A valid day number for that month, or `0` when invalid.
+    func clampedDayNumber(_ day: Int, month: Int, year: Int) -> Int {
+        let maxDay = numberOfDays(in: month, year: year)
+        guard maxDay > 0 else {
+            return 0
+        }
+        return min(max(day, 1), maxDay)
+    }
+
+    /// Resolves a preferred day-of-month for a target period (smart selection).
+    ///
+    /// - Keeps the day when it exists in the target month.
+    /// - Otherwise selects the last valid day (31 Jan → 28/29 Feb, 29 Feb leap → 28).
+    /// - Parameters:
+    ///   - preferredDay: Day-of-month to preserve, if any.
+    ///   - month: Target month (`1...12`).
+    ///   - year: Target year.
+    /// - Returns: Resolved selection, or `nil` when there is no preference / invalid period.
+    func resolveSelectedDay(
+        preferredDay: Int?,
+        month: Int,
+        year: Int
+    ) -> SmartDaySelection? {
+        guard let preferredDay else {
+            return nil
+        }
+        let resolved = clampedDayNumber(preferredDay, month: month, year: year)
+        guard resolved > 0 else {
+            return nil
+        }
+        return SmartDaySelection(
+            dayNumber: resolved,
+            wasClamped: resolved != preferredDay
+        )
+    }
+
+    /// Inclusive start-of-day dates from ``start`` through ``end``.
+    ///
+    /// Used by multi-day event placement on the month grid and day lists.
+    /// - Parameters:
+    ///   - start: Range start instant.
+    ///   - end: Range end instant.
+    /// - Returns: Ordered day-start dates covering the inclusive span.
+    func dayStarts(from start: Date, through end: Date) -> [Date] {
+        EventSchedule.dayStarts(from: start, through: end, calendar: calendar)
+    }
+
+    /// Returns whether an event schedule overlaps the calendar day of ``day``.
+    /// - Parameters:
+    ///   - day: Any instant on the queried day.
+    ///   - start: Event start.
+    ///   - end: Event end, or `nil` for start-only.
+    /// - Returns: `true` when the event should appear on that day.
+    func eventOccurs(on day: Date, start: Date, end: Date?) -> Bool {
+        EventSchedule.occurs(on: day, start: start, end: end, calendar: calendar)
     }
 
     /// Returns the first day of the provided month.

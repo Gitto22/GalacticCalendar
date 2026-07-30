@@ -8,54 +8,57 @@ import SwiftUI
 /// Text style tokens for Galactic Calendar.
 ///
 /// Views must consume typography exclusively through these tokens.
+/// Every token maps to a Dynamic Type ``Font.TextStyle`` (no fixed point sizes)
+/// so Accessibility text sizes, iPhone SE, and iPad scale consistently while
+/// preserving the approved visual hierarchy.
 enum Typography {
 
     // MARK: - Display
 
-    /// Largest display style for hero-level titles.
-    static let display = Font.system(size: 34, weight: .bold, design: .default)
+    /// Largest display style for hero-level titles → ``Font/largeTitle``.
+    static let display = Font.largeTitle.weight(.bold)
 
-    /// Large title style.
-    static let largeTitle = Font.system(size: 28, weight: .bold, design: .default)
+    /// Large title style → ``Font/title`` (Apple large title hierarchy step).
+    static let largeTitle = Font.title.weight(.bold)
 
     // MARK: - Titles
 
-    /// Primary title style.
-    static let title = Font.system(size: 22, weight: .semibold, design: .default)
+    /// Primary title style → ``Font/title2``.
+    static let title = Font.title2.weight(.semibold)
 
-    /// Secondary title style.
-    static let title2 = Font.system(size: 20, weight: .semibold, design: .default)
+    /// Secondary title style → ``Font/title3``.
+    static let title2 = Font.title3.weight(.semibold)
 
-    /// Tertiary title style.
-    static let title3 = Font.system(size: 18, weight: .semibold, design: .default)
+    /// Tertiary title / icon emphasis → ``Font/headline``.
+    static let title3 = Font.headline
 
     // MARK: - Body
 
-    /// Emphasized headline style.
-    static let headline = Font.system(size: 17, weight: .semibold, design: .default)
+    /// Emphasized headline style → ``Font/headline``.
+    static let headline = Font.headline
 
-    /// Standard body style.
-    static let body = Font.system(size: 17, weight: .regular, design: .default)
+    /// Standard body style → ``Font/body``.
+    static let body = Font.body
 
-    /// Callout style for supporting statements.
-    static let callout = Font.system(size: 16, weight: .regular, design: .default)
+    /// Callout style for supporting statements → ``Font/callout``.
+    static let callout = Font.callout
 
-    /// Subheadline style.
-    static let subheadline = Font.system(size: 15, weight: .regular, design: .default)
+    /// Subheadline style → ``Font/subheadline``.
+    static let subheadline = Font.subheadline
 
     // MARK: - Meta
 
-    /// Footnote style for compact metadata.
-    static let footnote = Font.system(size: 13, weight: .regular, design: .default)
+    /// Footnote style for compact metadata → ``Font/footnote``.
+    static let footnote = Font.footnote
 
-    /// Caption style.
-    static let caption = Font.system(size: 12, weight: .regular, design: .default)
+    /// Caption style → ``Font/caption``.
+    static let caption = Font.caption
 
-    /// Smallest caption style.
-    static let caption2 = Font.system(size: 11, weight: .regular, design: .default)
+    /// Smallest caption style → ``Font/caption2``.
+    static let caption2 = Font.caption2
 
     // MARK: - Mono
 
-    /// Monospaced style for numeric emphasis when required.
-    static let monospacedDigit = Font.system(size: 17, weight: .medium, design: .monospaced)
+    /// Monospaced digit emphasis → body text style + monospaced digits.
+    static let monospacedDigit = Font.body.weight(.medium).monospacedDigit()
 }

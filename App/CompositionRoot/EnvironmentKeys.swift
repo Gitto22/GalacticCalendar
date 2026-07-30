@@ -20,6 +20,8 @@ enum AppEnvironmentKeys {
         "AppConfiguration",
         "NavigationManager",
         "AppRouter",
-        "ThemeManager"
+        "ThemeManager",
+        "EventPersistenceService",
+        "EventTemplateService"
     ]
 }

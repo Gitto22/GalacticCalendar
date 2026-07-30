@@ -23,7 +23,7 @@ enum ModelContainerFactory {
         inMemory: Bool = false,
         enableCloudKit: Bool = false
     ) throws -> ModelContainer {
-        let schema = Schema(versionedSchema: GalacticCalendarSchemaV1.self)
+        let schema = Schema(versionedSchema: GalacticCalendarSchemaV6.self)
         let configuration = ModelConfiguration(
             "GalacticCalendar",
             schema: schema,

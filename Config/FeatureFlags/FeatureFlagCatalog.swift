@@ -19,7 +19,7 @@ enum FeatureFlagCatalog {
         .appleWatch: false,
         .eventKit: false,
         .sharing: false,
-        .universeMessages: false,
+        .universeMessages: true,
         .storeKit: false,
         .backup: false,
         .statistics: false,

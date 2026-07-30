@@ -1,6 +1,7 @@
 ﻿{
   "images" : [
     {
+      "filename" : "GalacticCalendar_AppIcon_1024_RGB.png",
       "idiom" : "universal",
       "platform" : "ios",
       "size" : "1024x1024"

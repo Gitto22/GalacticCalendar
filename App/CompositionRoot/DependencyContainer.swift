@@ -26,26 +26,49 @@ final class DependencyContainer {
 
     // MARK: - Appearance
 
-    /// Theme manager for system appearance preferences.
+    /// Theme manager for system appearance preferences and theme packs.
     let themeManager: ThemeManager
+
+    /// Calendar month/background appearance (header titles + monthly imagery).
+    let calendarAppearanceManager: CalendarAppearanceManager
 
     // MARK: - Persistence
 
-    /// SwiftData model container for local storage (CloudKit-ready configuration).
-    let modelContainer: ModelContainer
+    /// SwiftData model container when the on-disk store opened successfully.
+    ///
+    /// `nil` when storage is unavailable — the app must not attach an ephemeral
+    /// in-memory store for normal use.
+    let modelContainer: ModelContainer?
 
     /// Event persistence entry point for ViewModels.
     let eventPersistenceService: EventPersistenceService
 
-    /// Non-`nil` when the disk store failed and the app fell back to in-memory.
-    ///
-    /// ViewModels / root UI should surface this so the user knows data is ephemeral.
+    /// Global store availability mirrored onto ``eventPersistenceService``.
+    private(set) var storageAvailability: StorageAvailability
+
+    /// Non-`nil` when launch could not open the persistent store.
     private(set) var persistenceLaunchError: EventPersistenceError?
 
     // MARK: - Notifications
 
-    /// Local reminder scheduling service (also injected into ``eventPersistenceService``).
-    let notificationService: NotificationService
+    /// Local reminder scheduling (injected into ``eventPersistenceService`` only).
+    private let notificationService: NotificationService
+
+    // MARK: - Universe Messages
+
+    /// Catalog repository (sole data access for Universe Messages).
+    let universeMessageRepository: any UniverseMessageRepositoryProtocol
+
+    /// Day-selection engine.
+    let universeMessageEngine: UniverseMessageEngine
+
+    /// Application service for catalog mutations (favorites).
+    let universeMessageService: UniverseMessageService
+
+    // MARK: - Event Templates
+
+    /// Offline event-template façade (independent of the event catalog).
+    let eventTemplateService: EventTemplateService
 
     // MARK: - Lifecycle
 
@@ -61,6 +84,7 @@ final class DependencyContainer {
         self.themeManager = ThemeManager(
             allowsAdditionalThemes: configuration.isEnabled(.additionalThemes)
         )
+        self.calendarAppearanceManager = CalendarAppearanceManager()
 
         let notificationRepository = NotificationRepository()
         let notificationService = NotificationService(repository: notificationRepository)
@@ -68,38 +92,103 @@ final class DependencyContainer {
 
         let catalog = EventCatalogService()
 
+        let openedContainer: ModelContainer?
+        let availability: StorageAvailability
+        let launchError: EventPersistenceError?
+
         do {
-            let container = try ModelContainerFactory.make(
+            openedContainer = try ModelContainerFactory.make(
                 enableCloudKit: configuration.isEnabled(.cloudKitSync)
             )
-            self.modelContainer = container
-            self.persistenceLaunchError = nil
-            let repository = EventRepository(modelContext: container.mainContext)
-            self.eventPersistenceService = EventPersistenceService(
-                repository: repository,
-                catalog: catalog,
-                notificationService: notificationService
-            )
+            availability = .available
+            launchError = nil
         } catch {
-            do {
-                let fallback = try ModelContainerFactory.make(
-                    inMemory: true,
-                    enableCloudKit: false
-                )
-                self.modelContainer = fallback
-                self.persistenceLaunchError = .storeUnavailable
-                let repository = EventRepository(modelContext: fallback.mainContext)
-                self.eventPersistenceService = EventPersistenceService(
-                    repository: repository,
-                    catalog: catalog,
-                    notificationService: notificationService
-                )
-            } catch {
-                // In-memory SwiftData creation failed — the process cannot continue safely.
-                preconditionFailure(
-                    "Galactic Calendar could not create a ModelContainer (disk and in-memory failed): \(error)"
-                )
-            }
+            PersistenceLog.storeOpenFailed(error)
+            PersistenceLog.storageUnavailableEntered()
+            openedContainer = nil
+            availability = .unavailable
+            launchError = .storeUnavailable
+        }
+
+        self.modelContainer = openedContainer
+        self.storageAvailability = availability
+        self.persistenceLaunchError = launchError
+
+        if let openedContainer {
+            let eventRepository = EventRepository(modelContext: openedContainer.mainContext)
+            self.eventPersistenceService = EventPersistenceService(
+                repository: eventRepository,
+                catalog: catalog,
+                notificationService: notificationService,
+                storageAvailability: .available
+            )
+
+            let universeRepository = UniverseMessageRepository(
+                modelContext: openedContainer.mainContext
+            )
+            self.universeMessageRepository = universeRepository
+            let universeEngine = UniverseMessageEngine(repository: universeRepository)
+            self.universeMessageEngine = universeEngine
+            self.universeMessageService = UniverseMessageService(
+                repository: universeRepository,
+                engine: universeEngine,
+                storageAvailabilityProvider: { [weak self] in
+                    self?.storageAvailability ?? .unavailable
+                }
+            )
+
+            let templateRepository = EventTemplateRepository(
+                modelContext: openedContainer.mainContext
+            )
+            self.eventTemplateService = EventTemplateService(
+                repository: templateRepository,
+                storageAvailabilityProvider: { [weak self] in
+                    self?.storageAvailability ?? .unavailable
+                }
+            )
+        } else {
+            self.eventPersistenceService = EventPersistenceService(
+                repository: UnavailableEventRepository(),
+                catalog: catalog,
+                notificationService: notificationService,
+                storageAvailability: .unavailable
+            )
+
+            let universeRepository = UnavailableUniverseMessageRepository()
+            self.universeMessageRepository = universeRepository
+            let universeEngine = UniverseMessageEngine(repository: universeRepository)
+            self.universeMessageEngine = universeEngine
+            self.universeMessageService = UniverseMessageService(
+                repository: universeRepository,
+                engine: universeEngine,
+                storageAvailabilityProvider: { [weak self] in
+                    self?.storageAvailability ?? .unavailable
+                }
+            )
+
+            self.eventTemplateService = EventTemplateService(
+                repository: UnavailableEventTemplateRepository(),
+                storageAvailabilityProvider: { [weak self] in
+                    self?.storageAvailability ?? .unavailable
+                }
+            )
+        }
+    }
+
+    // MARK: - Recovery (manual / tests)
+
+    /// Marks storage as recovering, then available or unavailable again.
+    ///
+    /// Does **not** automatically reopen SwiftData — CloudKit/backup recovery
+    /// stays out of scope. Used by tests and a future explicit retry UI.
+    func applyStorageAvailability(_ availability: StorageAvailability) {
+        storageAvailability = availability
+        eventPersistenceService.updateStorageAvailability(availability)
+        switch availability {
+        case .available:
+            persistenceLaunchError = nil
+        case .unavailable, .recovering:
+            persistenceLaunchError = .storeUnavailable
         }
     }
 }

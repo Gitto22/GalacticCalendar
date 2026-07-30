@@ -5,11 +5,13 @@
 
 import Foundation
 
-/// WidgetKit constants reserved for the future widget target.
+/// WidgetKit constants reserved for a future widget target.
+///
+/// Not used in Private Beta — widgets remain feature-flagged off.
 enum WidgetConstants {
 
-    // MARK: - Reserved
+    // MARK: - Reserved (future)
 
-    /// Placeholder App Group identifier for widget data sharing.
+    /// App Group identifier for widget data sharing when widgets ship.
     static let appGroupIdentifier = "group.com.albancal.GalacticCalendar"
 }

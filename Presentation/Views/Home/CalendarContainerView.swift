@@ -36,7 +36,7 @@ struct CalendarContainerView: View {
         .padding(.horizontal, Spacing.pageHorizontal)
         .task {
             do {
-                try await eventPersistenceService.bootstrap()
+                try await eventPersistenceService.refresh()
             } catch {
                 // Failure recorded on EventPersistenceService.lastError.
             }
@@ -57,6 +57,7 @@ struct CalendarContainerView: View {
         CalendarContainerView()
     }
     .environment(ThemeManager())
+    .environment(CalendarAppearanceManager())
     .environment(persistence)
 }
 
@@ -74,8 +75,6 @@ private final class PreviewContainerEventRepository: EventRepositoryProtocol {
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
-
-    func fetchRecurring() async throws -> [Event] { [] }
 
     func update(_ event: Event) async throws {}
 

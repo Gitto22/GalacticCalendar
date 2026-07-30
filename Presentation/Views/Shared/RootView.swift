@@ -49,7 +49,7 @@ struct RootView: View {
                             }
                             homeViewModel = home
                             calendarGridViewModel = factory.makeCalendarGridViewModel()
-                            await home.bootstrapCatalog()
+                            await home.bootstrap()
                         }
                 }
             }

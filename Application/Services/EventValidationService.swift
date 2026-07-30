@@ -36,6 +36,9 @@ enum EventValidationIssue: Equatable, Sendable {
 
     /// Recurrence end date is invalid relative to the event date.
     case invalidRepeatEndDate
+
+    /// Recurrence occurrence count is invalid (must be ≥ 1).
+    case invalidRepeatOccurrenceCount
 }
 
 /// Validates Galactic Calendar events before persistence or presentation.
@@ -172,6 +175,10 @@ struct EventValidationService: Sendable {
             if endIsFinite == false || endDate < eventDate {
                 issues.append(.invalidRepeatEndDate)
             }
+        }
+
+        if let occurrenceCount = rule.occurrenceCount, occurrenceCount < 1 {
+            issues.append(.invalidRepeatOccurrenceCount)
         }
 
         return issues

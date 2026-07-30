@@ -32,7 +32,12 @@ final class EventEntity {
     var date: Date
 
     /// Optional end date and time.
+    ///
+    /// Later calendar day than ``date`` = multi-day event (``Event/isMultiDay``).
     var endDate: Date?
+
+    /// Whether the event is all-day (`false` for legacy rows after lightweight migration).
+    var isAllDay: Bool
 
     /// Optional IANA time zone identifier (nil = legacy / device current on read).
     var timeZoneIdentifier: String?
@@ -60,6 +65,9 @@ final class EventEntity {
     /// Raw value for ``EventColor``.
     var colorRawValue: String
 
+    /// JSON-encoded ``EventTag`` list (`[]` when empty / legacy).
+    var tagsRawValue: String
+
     // MARK: - Timestamps
 
     /// Creation timestamp.
@@ -77,6 +85,7 @@ final class EventEntity {
         eventDescription: String,
         date: Date,
         endDate: Date? = nil,
+        isAllDay: Bool = false,
         timeZoneIdentifier: String? = nil,
         reminder: Date?,
         repeatRuleRawValue: String,
@@ -84,6 +93,7 @@ final class EventEntity {
         priorityRawValue: String,
         statusRawValue: String,
         colorRawValue: String,
+        tagsRawValue: String = "[]",
         createdAt: Date,
         updatedAt: Date
     ) {
@@ -92,6 +102,7 @@ final class EventEntity {
         self.eventDescription = eventDescription
         self.date = date
         self.endDate = endDate
+        self.isAllDay = isAllDay
         self.timeZoneIdentifier = timeZoneIdentifier
         self.reminder = reminder
         self.repeatRuleRawValue = repeatRuleRawValue
@@ -99,6 +110,7 @@ final class EventEntity {
         self.priorityRawValue = priorityRawValue
         self.statusRawValue = statusRawValue
         self.colorRawValue = colorRawValue
+        self.tagsRawValue = tagsRawValue
         self.createdAt = createdAt
         self.updatedAt = updatedAt
     }

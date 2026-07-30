@@ -11,7 +11,7 @@ final class EventEntityMapperTests: XCTestCase {
 
     // MARK: - Round Trip
 
-    func testMakeEntityAndMakeDomainRoundTrip() {
+    func testMakeEntityAndMakeDomainRoundTrip() throws {
         let end = Date(timeIntervalSince1970: 1_950_000_000)
         let original = Event(
             id: UUID(),
@@ -30,21 +30,21 @@ final class EventEntityMapperTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 1_850_000_000)
         )
 
-        let entity = EventEntityMapper.makeEntity(from: original)
-        let restored = EventEntityMapper.makeDomain(from: entity)
+        let entity = try EventEntityMapper.makeEntity(from: original)
+        let restored = try EventEntityMapper.makeDomain(from: entity)
 
         XCTAssertEqual(restored, original)
     }
 
     // MARK: - Apply
 
-    func testApplyUpdatesMutableFields() {
+    func testApplyUpdatesMutableFields() throws {
         let original = Event(
             title: "Before",
             date: Date(timeIntervalSince1970: 1_900_000_000),
             color: .green
         )
-        let entity = EventEntityMapper.makeEntity(from: original)
+        let entity = try EventEntityMapper.makeEntity(from: original)
 
         let updated = Event(
             id: original.id,
@@ -52,6 +52,7 @@ final class EventEntityMapperTests: XCTestCase {
             description: "Changed",
             date: Date(timeIntervalSince1970: 1_910_000_000),
             endDate: Date(timeIntervalSince1970: 1_910_007_200),
+            isAllDay: true,
             timeZoneIdentifier: "UTC",
             reminder: Date(timeIntervalSince1970: 1_909_999_000),
             repeatRule: .daily,
@@ -63,13 +64,14 @@ final class EventEntityMapperTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 1_920_000_000)
         )
 
-        EventEntityMapper.apply(updated, to: entity)
-        let restored = EventEntityMapper.makeDomain(from: entity)
+        try EventEntityMapper.apply(updated, to: entity)
+        let restored = try EventEntityMapper.makeDomain(from: entity)
 
         XCTAssertEqual(restored.title, "After")
         XCTAssertEqual(restored.description, "Changed")
         XCTAssertEqual(restored.date, updated.date)
         XCTAssertEqual(restored.endDate, updated.endDate)
+        XCTAssertTrue(restored.isAllDay)
         XCTAssertEqual(restored.timeZoneIdentifier, "UTC")
         XCTAssertEqual(restored.reminder, updated.reminder)
         XCTAssertEqual(restored.repeatRule, .daily)
@@ -77,17 +79,33 @@ final class EventEntityMapperTests: XCTestCase {
         XCTAssertEqual(restored.priority, .low)
         XCTAssertEqual(restored.status, .cancelled)
         XCTAssertEqual(restored.color, .red)
+        XCTAssertEqual(restored.tags.map(\.id), ["work"])
         XCTAssertEqual(restored.createdAt, original.createdAt)
         XCTAssertEqual(restored.updatedAt, updated.updatedAt)
     }
 
-    func testNilTimeZoneFallsBackToCurrent() {
+    func testAllDayRoundTripPreservesFlag() throws {
+        let original = Event(
+            title: "Holiday",
+            date: Date(timeIntervalSince1970: 1_900_000_000),
+            endDate: Date(timeIntervalSince1970: 1_900_086_399),
+            isAllDay: true,
+            timeZoneIdentifier: "UTC",
+            color: .green
+        )
+        let restored = try EventEntityMapper.makeDomain(from: try EventEntityMapper.makeEntity(from: original))
+        XCTAssertTrue(restored.isAllDay)
+        XCTAssertEqual(restored, original)
+    }
+
+    func testNilTimeZoneFallsBackToCurrent() throws {
         let entity = EventEntity(
             id: UUID(),
             title: "Legacy",
             eventDescription: "",
             date: Date(timeIntervalSince1970: 1_900_000_000),
             endDate: nil,
+            isAllDay: false,
             timeZoneIdentifier: nil,
             reminder: nil,
             repeatRuleRawValue: "none",
@@ -99,14 +117,17 @@ final class EventEntityMapperTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
 
-        let domain = EventEntityMapper.makeDomain(from: entity)
+        let domain = try EventEntityMapper.makeDomain(from: entity)
         XCTAssertNil(domain.endDate)
+        XCTAssertFalse(domain.isAllDay)
         XCTAssertEqual(domain.timeZoneIdentifier, TimeZone.current.identifier)
+        XCTAssertEqual(domain.priority, .normal)
+        XCTAssertEqual(domain.tags.map(\.id), ["work"])
     }
 
     // MARK: - Unknown Raw Values
 
-    func testUnknownEnumRawValuesFallBackToDefaults() {
+    func testUnknownEnumRawValuesThrowCorruptData() {
         let entity = EventEntity(
             id: UUID(),
             title: "Fallback",
@@ -122,11 +143,8 @@ final class EventEntityMapperTests: XCTestCase {
             updatedAt: Date(timeIntervalSince1970: 1_800_000_000)
         )
 
-        let domain = EventEntityMapper.makeDomain(from: entity)
-
-        XCTAssertEqual(domain.category, .other)
-        XCTAssertEqual(domain.priority, .medium)
-        XCTAssertEqual(domain.status, .pending)
-        XCTAssertEqual(domain.color, .green)
+        XCTAssertThrowsError(try EventEntityMapper.makeDomain(from: entity)) { error in
+            XCTAssertEqual(error as? EventRepositoryError, .corruptData)
+        }
     }
 }

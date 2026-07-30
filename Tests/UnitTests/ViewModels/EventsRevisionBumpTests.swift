@@ -25,14 +25,14 @@ final class EventsRevisionBumpTests: XCTestCase {
     func testBootstrapLoadsCatalog() async throws {
         let event = sampleEvent()
         let service = makeService(seed: [event])
-        try await service.bootstrap()
+        try await service.refresh()
         XCTAssertEqual(service.events.map(\.id), [event.id])
         XCTAssertNil(service.lastError)
     }
 
     func testCreateUpdatesCatalogAndRevision() async throws {
         let service = makeService()
-        try await service.bootstrap()
+        try await service.refresh()
         let before = service.eventsRevision
 
         try await service.create(sampleEvent())
@@ -43,7 +43,7 @@ final class EventsRevisionBumpTests: XCTestCase {
     func testDeleteRemovesFromCatalog() async throws {
         let event = sampleEvent()
         let service = makeService(seed: [event])
-        try await service.bootstrap()
+        try await service.refresh()
 
         try await service.delete(event)
         XCTAssertTrue(service.events.isEmpty)
@@ -55,7 +55,7 @@ final class EventsRevisionBumpTests: XCTestCase {
         let tomorrow = calendar.date(byAdding: .day, value: 1, to: today)!
 
         let service = makeService()
-        try await service.bootstrap()
+        try await service.refresh()
         try await service.create(Event(title: "Today", date: today, color: .green))
         try await service.create(Event(title: "Tomorrow", date: tomorrow, color: .red))
 
@@ -68,7 +68,7 @@ final class EventsRevisionBumpTests: XCTestCase {
         )
 
         do {
-            try await service.bootstrap()
+            try await service.refresh()
             XCTFail("Expected catalogLoadFailed")
         } catch EventPersistenceError.catalogLoadFailed {
             XCTAssertEqual(service.lastError, .catalogLoadFailed)
@@ -96,8 +96,6 @@ private final class FailingFetchEventRepository: EventRepositoryProtocol {
     func fetch(in interval: DateInterval) async throws -> [Event] { [] }
 
     func fetchGroupedByDay(in interval: DateInterval) async throws -> [Date: [Event]] { [:] }
-
-    func fetchRecurring() async throws -> [Event] { [] }
 
     func update(_ event: Event) async throws {}
 
